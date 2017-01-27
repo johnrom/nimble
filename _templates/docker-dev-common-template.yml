@@ -1,0 +1,72 @@
+front:
+  restart: always
+  image: jwilder/nginx-proxy
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+    - DOCROOT/_conf/front/nginx.conf:/etc/nginx/conf.d/custom.conf
+    - DOCROOT/_conf/certs:/etc/nginx/certs
+  ports:
+    - "80:80"
+    - "443:443"
+
+wp_files:
+  image: johnrom/docker-wordpress-wp-cli-xdebug:latest
+  command: /bin/true
+
+wp_site:
+  restart: always
+  image: johnrom/docker-wordpress-wp-cli-xdebug:latest
+  working_dir: /var/www/html
+  expose:
+    - "80"
+    - "443"
+  environment:
+    - HTTPS_METHOD=noredirect
+    - XDEBUG_CONFIG
+
+wp_files_soap:
+  image: johnrom/docker-wordpress-wp-cli-xdebug-soap:latest
+  command: /bin/true
+
+wp_site_soap:
+  restart: always
+  image: johnrom/docker-wordpress-wp-cli-xdebug-soap:latest
+  working_dir: /var/www/html
+  expose:
+    - "80"
+    - "443"
+  environment:
+    - HTTPS_METHOD=noredirect
+    - XDEBUG_CONFIG
+
+wp_db:
+  restart: always
+  image: mariadb
+  environment:
+    MYSQL_ROOT_PASSWORD: example
+
+wp_data:
+  image: mariadb
+  command: /bin/true
+
+wp_pma:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    environment:
+      - HTTPS_METHOD=noredirect
+      - PMA_HOST=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=example
+      - PHP_UPLOAD_MAX_FILESIZE=256M
+    expose:
+      - "80"
+      - "443"
+
+wp_webgrind:
+    image: clue/webgrind
+    restart: always
+    expose:
+      - "80"
+      - "443"
+    environment:
+      - HTTPS_METHOD=noredirect

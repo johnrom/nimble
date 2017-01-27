@@ -1,0 +1,54 @@
+
+### PROJECT_start ###
+
+PROJECT_www:
+  container_name: PROJECT_www
+  extends:
+    file: docker-dev-common.yml
+    service: wp_files
+  volumes:
+    - DOCROOT/PROJECT/www:/var/www/html
+  volumes_from:
+    - PROJECT_webgrind
+
+PROJECT:
+  container_name: PROJECT
+  extends:
+    file: docker-dev-common.yml
+    service: wp_site
+  volumes_from:
+    - PROJECT_www
+  environment:
+    - VIRTUAL_HOST=PROJECT.local
+  links:
+    - PROJECT_db:mysql
+
+PROJECT_db:
+  container_name: PROJECT_db
+  extends:
+    file: docker-dev-common.yml
+    service: wp_db
+  volumes:
+    - PROJECT_db_volume:/var/lib/mysql
+
+PROJECT_pma:
+  container_name: PROJECT_pma
+  extends:
+    file: docker-dev-common.yml
+    service: wp_pma
+  environment:
+    - VIRTUAL_HOST=phpmyadmin.PROJECT.local
+  links:
+    - PROJECT_db:mysql
+
+PROJECT_webgrind:
+  container_name: PROJECT_webgrind
+  extends:
+    file: docker-dev-common.yml
+    service: wp_webgrind
+  environment:
+    - VIRTUAL_HOST=webgrind.PROJECT.local
+  volumes:
+    - /tmp
+
+### PROJECT_end ###
