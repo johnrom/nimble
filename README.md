@@ -4,19 +4,28 @@
 
 Avast, ye scurvy dogs! The sea is a cruel mistress, but with a compass (this readme) and an open mind may you navigate her to safety.
 
-Enough with the maritime analogy, we're here to nerd out and learn about technology, so let me tell you how this works.
+Enough with the maritime analogy, we're here to nerd out and learn about technology, so let me tell you how this works, beginning with some important notes.
+
+* This assumes you use the default ports, IPs, and basic out-of-the-box functionality of Docker. 10.0.75.0 is the IP address it likes to route, 0.0.0.0:2075 is the port it likes to call docker on. I didn't want to mess with any of this.
+* This assumes, if you're on Windows, that you use the `C` drive for your hosts file. Sorry!
+* This probably assumes a bunch of other things.
+
+Here are some requests from anyone who finds this interesting and knows a thing or two about Bash:
+
+* How can I add extensibility to a bash script? For example, I do some extra stuff that wasn't able to carry over to the public version. Is there a way that, in the middle of installing WordPress, I can allow custom functions to be called from, say, the `_extensions/` folder?
+* What's the easiest way to create a config file for a bash script??
 
 ## But first, some caveats
 
 Don't use this if you are scared of explosions. It's untested, wild technology. You have to run your terminal with administrator privileges. Nobody likes doing that. You don't know me. What if I was like "lol `rm -rf /`". Come on, now!
 
-When this script works, it will change your life. You will feel free as a bird, free to overcome any obstacles. You can debug stuff. You can phpmyadmin all day. You can even `PROFILE` for goodness sakes! But when this script doesn't work, or when docker decides not to cooperate, your life will become a living nightmare. You'll be like "why can't I install wordpress with a space in the title?" (you can't with Git Bash on Windows).
+When this script works, it will change your life. You will feel free as a bird, free to overcome any obstacles. You can debug stuff. You can phpmyadmin all day. You can even `PROFILE` for goodness sakes! But when this script doesn't work, or when docker decides not to cooperate, your life will become a living nightmare. You'll be like "why can't I install wordpress with a space in the title?" (you can't on Windows, at least).
 
-There are tons of things I haven't figured out yet, maybe I never will. How do I get Git Bash to pass spaces to Docker to pass to a container to pass to WP CLI? I don't know! I'll never know!
+There are tons of things I haven't figured out yet, maybe I never will. How do I get Git Bash to pass arguments with spaces to Docker to pass to a container to pass to WP CLI? I don't know! I'll probably never know!
 
 - Mac support is not guaranteed.
 - Linux support was never tested once.
-- Windows support is probable but not guaranteed.
+- Windows support is probable but also not guaranteed.
 
 Even I'm afraid some days. Are you afraid? If not, then you can maybe read through the script and understand what it's doing. Then you can probably even tell me how to make it better. And submit some pull requests and junk. Who knows! Either way, you're ready to move to the installation process:
 
@@ -24,9 +33,9 @@ Even I'm afraid some days. Are you afraid? If not, then you can maybe read throu
 
 I like this project to sit at `~/projects/docker`. That way it can live alongside my other projects, like `~/projects/dotnet` and `~/projects/shopify`.
 
-I also like this project to be at My Documents on Windows, at `~/Documents/projects/docker`, though that is just because it's easier to get to than your user folder when navigating windows.
+I also like this project to be at My Documents on Windows, at `~/Documents/projects/docker`, though that is just because it's easier to get to than your user folder when navigating Windows.
 
-It may be required that it lives in your user directory... or it may not. It used to be before the fancy new Docker for Windows/Docker for Mac. Try it out.
+It may be required that it lives in your user directory... or it may not. It used to be before the fancy new Docker for Windows/Docker for Mac. Try putting it anywhere, but if it doesn't work, you should probably put it in your user folder.
 
 ## Step two-point-five: Create a shortcut
 
@@ -36,11 +45,11 @@ In your `docker` or `nimble` folder, run the command `./nimble.sh localize` (**n
 
 `./nimble.sh` => `nimble`
 
-Note that due to Windows and Linux symlink conflicts, sometimes you'll have to re-run this command.
+You might have to re-run this command after updating this script. Or you might not! Who knows.
 
 ## Step three: Check your connection to docker
 
-You must have Docker, Docker for Windows, or Docker for Mac installed for this to work. This should go without saying!
+You must have Docker, Docker for Windows, or Docker for Mac installed for this to work. This should go without saying! I haven't had Docker Toolbox for months now, so I have no idea if this script will work with it. Maybe it does, though.
 
 To check your connection to docker, open your Terminal, Git Bash, or Ubuntu for Windows, and enter `docker ps`. You should see a table, probably empty, showing that you have no (or some) containers running. This is good. If you see an error, you will have to fix your Docker version. Good luck!
 
@@ -52,9 +61,9 @@ Anchors aweigh!
 
 This will create a new project that will live at `http://my-test-project.local/` -- if you choose to generate certs for this project, you will also be able to access it on `https://my-test-project.local`, but it will of course be untrusted.
 
-It will also offer to clone a Git repo (connected to your Git used in this terminal, so if you can pull it from the terminal, you can pull it with `nimble`). If you choose to clone a Git repo, it'll also offer to run `npm install`... because I'm lazy :)
+It will also offer to clone a Git repo (connected to your Git used in this terminal, so if you can pull it from the terminal, you can pull it with `nimble`). If you choose to clone a Git repo, it'll also offer to run `npm install`... because I'm lazy :). When installing WP it will try and cheat and read your Git email address registered via git.config. Because I'm even lazier!
 
-Additionally, by default it will use my WordPress image with WP-CLI and XDebug which is based on Conetix's version. With this, you can listen to WordPress using any Xdebug plugins for your editor of choice.
+Additionally, by default it will use my WordPress image with WP-CLI and XDebug which is based on Conetix's version. With this, you can listen to WordPress using any Xdebug plugins on port :9000 for your editor of choice.
 
 - https://hub.docker.com/r/johnrom/docker-wordpress-wp-cli-xdebug/
 - https://github.com/johnrom/docker-wordpress-wp-cli-xdebug
@@ -64,20 +73,21 @@ Additionally, by default it will use my WordPress image with WP-CLI and XDebug w
 
 Even if you're not impressed by the fact that one command can boot virtually unlimited sites (I mean, we had Vagrant/VVV already, right?) this new system has a number of benefits.
 
-The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal!
+The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal! Just go to `_projects/yourproject.yml` and change the service/image to whatever version you would like.
 
 Additionally, there is a common configuration file: `docker-dev-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already had 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours!
 
-Now that the benefits are out of the way, let's introduce three important features.
+Now that the benefits are out of the way, let's introduce the subcommands
 
-## Nimble Scripts
+## Nimble Subcommands
 
 ### `nimble create mysite`
 
 - creates folders
 - creates docker-compose.yml configuration
-- installs WordPress (like VV Create)
-- installs NPM
+- clones repository (if desired)
+- installs NPM (if desired)
+- installs WordPress (if desired)
 - adds `project.local`, `phpmyadmin.project.local` and `webgrind.project.local` to your `hosts` file. Webgrind will only work if you use `nimble up profile`
 
 What a boss!
@@ -90,11 +100,11 @@ Running `nimble up profile` will start PHP with `xdebug.profiler_enable=1` and `
 
 ### `nimble down`
 
-This stops docker. It just runs `docker-compose down`, but I figured why have that one command be the only time you touch docker-compose?
+This stops docker. It just runs `docker-compose down`, but I figured why have that one command be the only time you use `docker-compose`?
 
 ### `nimble restart`
 
-This is `nimble down` + `nimble up` on steroids.
+This is `nimble down` + `nimble up`.
 
 ### `nimble update`
 
@@ -114,7 +124,7 @@ This is mostly internal, but you can eval it if you want to be weird.
 
 ### `nimble hosts mysite`
 
-This, quite simply, will add `mysite.local` and `phpmyadmin.mysite.local` to your hosts file, deleting any other instances of these URLs. Make sure you run it as an administrator!
+This, quite simply, will add `mysite.local` `phpmyadmin.mysite.local` and `webgrind.mysite.local` to your hosts file, deleting any other instances of these URLs. Make sure you run it as an administrator!
 
 ### `nimble rmhosts mysite`
 
