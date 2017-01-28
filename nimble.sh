@@ -52,8 +52,6 @@ help(){
     echo "Usage: $command init \$project"
     echo "Install WP DB:"
     echo "Usage: $command install \$project"
-    echo "Set Docker and XDebug Environment:"
-    echo "Usage: eval \"\$($command env)\""
     echo "Add Site to Hosts:"
     echo "Usage: $command hosts \$project"
     echo "Remove Site from Hosts:"
@@ -342,6 +340,11 @@ install() {
     local dir="."
     local inner_dir="/var/www/html"
 
+    if [[ -z "$project" ]]; then
+        echo "Please enter a project to install! e.g. nimble install myproject"
+        return
+    fi
+
     if is_root; then
         local dir=$PWD/sites/$project/www
     fi
@@ -418,7 +421,7 @@ cert() {
 
 npm_install() {
 
-    if confirm "Do you want to install NPM? It could take a while..." Y; then
+    if confirm "Do you want to install NPM? It could take a while..." N; then
         # Install NPM Dependencies
         #
         echo "Installing NPM Dependencies"
@@ -528,14 +531,21 @@ hosts() {
     fi
 
     local project=$1
+    # check Git Bash hosts location
     local file="/c/Windows/System32/drivers/etc/hosts"
 
     if [ ! -f $file ]; then
-        local file="/private/etc/hosts"
+        # check Ubuntu for Windows Bash hosts location
+        local file="/mnt/c/Windows/System32/drivers/etc/hosts"
 
         if [ ! -f $file ]; then
-            echo "Cannot find hosts file"
-            return
+            # check Mac hosts location
+            local file="/private/etc/hosts"
+
+            if [ ! -f $file ]; then
+                echo "Cannot find hosts file"
+                return
+            fi
         fi
     fi
 
@@ -582,11 +592,15 @@ rmhosts() {
     local file="/c/Windows/System32/drivers/etc/hosts"
 
     if [ ! -f $file ]; then
-        local file="/private/etc/hosts"
+        local file="/mnt/c/Windows/System32/drivers/etc/hosts"
 
         if [ ! -f $file ]; then
-            echo "Cannot find hosts file"
-            return
+            local file="/private/etc/hosts"
+
+            if [ ! -f $file ]; then
+                echo "Cannot find hosts file"
+                return
+            fi
         fi
     fi
 
@@ -642,17 +656,17 @@ delete_one() {
     echo "Removing $project from Git"
     git rm --cached "$dir/.keep" >& /dev/null
 
-    echo "Deleting */$project.yml from gitignore"
+    echo "Deleting *$project.yml from gitignore"
     grep -v "^.*$project\.yml.*$" .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
 
     rmhosts $project
 
-    if confirm "Delete Project Files? You could lose work! This is irreversible!" N; then
+    if confirm "Delete Project Files for $project? You could lose work! This is irreversible!" N; then
         echo "Deleting $project files"
         rm -rf "$root/sites/$project" >& /dev/null
     fi
 
-    if confirm "Delete Project Database? This is also irreversible!" N; then
+    if confirm "Delete Project Database for $project? This is also irreversible!" N; then
         echo "Deleting $project database"
         docker volume rm "$project"_db_volume >& /dev/null
     fi
@@ -671,10 +685,11 @@ delete() {
     if [[ $project == "all" ]]; then
 
         if confirm "Really remove all projects from Nimble? You will be asked if you want to delete files on a per-project basis." N; then
-            for d in $(ls -d sites); do
+            for d in $(ls -d sites/*); do
 
                 if [ -d $d ]; then
-                    delete_one $d
+                    echo "Deleting $(basename $d)"
+                    delete_one "$(basename $d)"
                 fi
             done
         fi

@@ -8,8 +8,7 @@ PROJECT_www:
     service: wp_files
   volumes:
     - DOCROOT/sites/PROJECT/www:/var/www/html
-  volumes_from:
-    - PROJECT_webgrind
+    - DOCROOT/sites/PROJECT/cachegrind:/tmp/cachegrind
 
 PROJECT:
   container_name: PROJECT
@@ -49,6 +48,6 @@ PROJECT_webgrind:
   environment:
     - VIRTUAL_HOST=webgrind.PROJECT.local
   volumes:
-    - /tmp
+    - DOCROOT/sites/PROJECT/cachegrind:/tmp
 
 ### PROJECT_end ###
