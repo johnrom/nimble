@@ -15,6 +15,8 @@ Here are some requests from anyone who finds this interesting and knows a thing 
 * How can I add extensibility to a bash script? For example, I do some extra stuff that wasn't able to carry over to the public version. Is there a way that, in the middle of installing WordPress, I can allow custom functions to be called from, say, the `_extensions/` folder?
 * What's the easiest way to create a config file for a bash script??
 
+Continue reading to find out how this script works.
+
 ## But first, some caveats
 
 Don't use this if you are scared of explosions. It's untested, wild technology. You have to run your terminal with administrator privileges. Nobody likes doing that. You don't know me. What if I was like "lol `rm -rf /`". Come on, now!
