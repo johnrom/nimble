@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# A Nimble Docker Environment
+# Copyright (C) 2017 John Romberger web@johnrom.com
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # Is the command ./nimble.sh or nimble
 if [[ $0 == \.* ]]; then
     command=$0
@@ -12,7 +29,7 @@ source="$PWD/nimble.sh"
 
 # Check that we're running in docker root directory
 if [[ ! -f $source ]]; then
-    echo "This command must be run from the docker root directory. Please navigate there to use NimbleDock."
+    echo "This command must be run from the docker root directory. Please navigate there to use Nimble."
     exit 1
 fi
 
@@ -159,7 +176,7 @@ ask() {
 wp(){
     # requires project name
     if [[ -z "$1" ]]; then
-        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        echo "You need to provide the project to wp into! e.g., nimble wp myproject"
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
@@ -338,7 +355,7 @@ install() {
     ask password "Admin Password" "password" --required
     ask email "Admin Email" "$(git config user.email)" --required
 
-    echo "Waiting for WordPress"
+    echo "Waiting for WordPress at $dir/wp-config.php"
     while [ ! -f $dir/wp-config.php ]
     do
         sleep 2
@@ -653,7 +670,7 @@ delete() {
 
     if [[ $project == "all" ]]; then
 
-        if confirm "Really remove all projects from Nimble Dock? You will be asked if you want to delete files on a per-project basis." N; then
+        if confirm "Really remove all projects from Nimble? You will be asked if you want to delete files on a per-project basis." N; then
             for d in $(ls -d sites); do
 
                 if [ -d $d ]; then
@@ -666,65 +683,7 @@ delete() {
     fi
 }
 
-loadtest() {
-
-    if [ -z `which artillery` ]; then
-        echo "Artillery is not installed on this system"
-        exit 1
-    fi
-
-    # requires project name
-    if [[ -z "$1" ]]; then
-        echo "You need to provide the project to blow up! e.g., nimble artillery linvilla dev"
-        exit 1
-    fi
-
-    if [ ! -f "_scripts/artillery/$1.json" ]; then
-        echo "Artillery file _scripts/artillery/$1.json does not exist."
-        exit 1
-    fi
-
-    if [[ -z "$2" ]]; then
-        local artillery_command="artillery run $PWD/_scripts/artillery/$1.json"
-        local artillery_output_prefix="$1"
-    else
-        local artillery_command="artillery run $PWD/_scripts/artillery/$1.json -e '$2'"
-        local artillery_output_prefix="$1-$2"
-    fi
-
-    if [[ ! -d "_logs/artillery/$artillery_output_prefix/src" ]]; then
-        mkdir -p "_logs/artillery/$artillery_output_prefix/src"
-    fi
-
-    local timestamp="$(date +"%Y%m%d-%H%M%S")"
-    local artillery_output="$PWD/_logs/artillery/$artillery_output_prefix/src/$artillery_output_prefix-$timestamp.json"
-
-    artillery_command="$artillery_command -o $artillery_output"
-    echo "$artillery_command"
-
-    $artillery_command
-
-    if [ $? -ne 1 ]; then
-        local artillery_output_html="$PWD/_logs/artillery/$artillery_output_prefix/$artillery_output_prefix-$timestamp.html"
-        artillery report $artillery_output -o $artillery_output_html
-
-        if [ $? -ne 1 ]; then
-            ln -sf $artillery_output_html "$PWD/_logs/artillery/$artillery_output_prefix/last.html"
-
-            if [ $? -ne 1 ]; then
-                if [ ! -z `which start` ]; then
-                    start "$PWD/_logs/artillery/$artillery_output_prefix/last.html"
-                fi
-            fi
-
-            ln -sf $artillery_output_html "$PWD/_logs/artillery/last.html"
-        fi
-    fi
-
-    exit $?
-}
-
-if [[ $1 =~ ^(help|wp|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|loadtest|update)$ ]]; then
+if [[ $1 =~ ^(help|wp|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update)$ ]]; then
   "$@"
 else
   help

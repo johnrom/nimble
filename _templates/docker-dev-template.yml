@@ -7,7 +7,7 @@ PROJECT_www:
     file: docker-dev-common.yml
     service: wp_files
   volumes:
-    - DOCROOT/PROJECT/www:/var/www/html
+    - DOCROOT/sites/PROJECT/www:/var/www/html
   volumes_from:
     - PROJECT_webgrind
 
