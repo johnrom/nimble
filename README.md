@@ -47,8 +47,6 @@ In your `docker` or `nimble` folder, run the command `./nimble.sh localize` (**n
 
 `./nimble.sh` => `nimble`
 
-You might have to re-run this command after updating this script. Or you might not! Who knows.
-
 ## Step three: Check your connection to docker
 
 You must have Docker, Docker for Windows, or Docker for Mac installed for this to work. This should go without saying! I haven't had Docker Toolbox for months now, so I have no idea if this script will work with it. Maybe it does, though.
