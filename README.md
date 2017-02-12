@@ -43,7 +43,7 @@ It may be required that it lives in your user directory... or it may not. It use
 
 Whether you're in macOS or Windows, `~/bin` AKA your user binaries folder must be in your path in order to use the shortcut.
 
-In your `docker` or `nimble` folder, run the command `./nimble.sh localize` (**not `nimble localize`!**). This will create a shortcut command so you don't have to type `./nimble.sh` all the time. Replace all instances of the commands in this readme with `nimble` from now on if you chose this step!
+In your `docker` or `nimble` folder, run the command `./nimble.sh localize` (**not `nimble localize`!**). This will create a shortcut command so you don't have to type `./nimble.sh` all the time.
 
 `./nimble.sh` => `nimble`
 
