@@ -10,6 +10,7 @@ Welcome to `nimble`, a Docker shell project hoping to make your experience with 
 
 Along with those dependencies, there are some assumptions this command makes:
 
+* If on Windows, Docker for Windows only works on Windows 10 Professional. If you're on Windows 10 Home, try Docker Toolbox, but mileage may vary
 * This assumes you use the default ports, IPs, and basic out-of-the-box functionality of Docker. 10.0.75.0 is the IP address it likes to route, 0.0.0.0:2075 is the port it likes to call docker on. I didn't want to mess with any of this.
 * This assumes, if you're on Windows, that you use the `C` drive for your hosts file. Sorry!
 * It probably assumes a bunch of other things.
