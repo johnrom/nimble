@@ -24,6 +24,36 @@ wp_site:
     - HTTPS_METHOD=noredirect
     - XDEBUG_CONFIG
 
+wp_php7_files:
+  image: wordpress:php7.0
+  command: /bin/true
+
+wp_php7_site:
+  restart: always
+  image: wordpress:php7.0
+  working_dir: /var/www/html
+  expose:
+    - "80"
+    - "443"
+  environment:
+    - HTTPS_METHOD=noredirect
+    - XDEBUG_CONFIG
+
+php_files:
+  image: php:apache
+  command: /bin/true
+
+php_site:
+  restart: always
+  image: php:apache
+  working_dir: /var/www/html
+  expose:
+    - "80"
+    - "443"
+  environment:
+    - HTTPS_METHOD=noredirect
+    - XDEBUG_CONFIG
+
 wp_files_soap:
   image: johnrom/docker-wordpress-wp-cli-xdebug-soap:latest
   command: /bin/true

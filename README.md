@@ -55,7 +55,7 @@ Even if you're not impressed by the fact that one command can boot virtually unl
 
 The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal! Just go to `_projects/yourproject.yml` and change the service/image to whatever version you would like -- the data, however, will be lost, so only do that at the start of a project.
 
-Additionally, there is a common configuration file: `docker-dev-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already had 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours. Kind of cool.
+Additionally, there is a common configuration file: `docker-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already had 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours. Kind of cool.
 
 Now that the benefits are out of the way, let's introduce the subcommands
 
@@ -93,7 +93,7 @@ Anchors aweigh! Let's provision some sites using the `create` command, explained
 - creates docker-compose.yml configuration
 - (optional) clones repository
 - (optional) installs NPM
-- (optional) installs WordPress 
+- (optional) installs WordPress
 - (optional) adds `project.local`, `phpmyadmin.project.local` and `webgrind.project.local` to your `hosts` file. Webgrind will only work if you use `nimble up profile`
 - starts the new containers.
 

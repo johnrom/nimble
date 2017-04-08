@@ -234,7 +234,7 @@ create(){
     # update dev config
     #
     echo "Adding .yml file"
-    local dev_template=$(<_templates/docker-dev-template.yml)
+    local dev_template=$(<_templates/docker-wp-template.yml)
 
     dev_template=${dev_template//PROJECT/$project}
 
@@ -278,7 +278,7 @@ up(){
     done
 
     echo "Processing Common Template"
-    local common_template=$(<"_templates/docker-dev-common-template.yml")
+    local common_template=$(<"_templates/docker-common-template.yml")
     common_template=${common_template//DOCROOT/$this_directory}
 
     if ! is_mac; then
@@ -288,7 +288,7 @@ up(){
         common_template=${common_template//"/mnt/c/"/"c:/"}
     fi
 
-    echo "$common_template" > "docker-dev-common.yml"
+    echo "$common_template" > "docker-common.yml"
 
     echo "Starting docker-compose in detached mode"
     docker-compose up -d

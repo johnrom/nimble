@@ -3,5 +3,5 @@
 front:
   container_name: front
   extends:
-    file: docker-dev-common.yml
+    file: docker-common.yml
     service: front
