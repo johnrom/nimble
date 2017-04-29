@@ -7,42 +7,28 @@ Welcome to `nimble`, a Docker shell project hoping to make your experience with 
 * Install Docker
 * Install Git on the Command Line
 * Add `~/bin` to your PATH
+* Run your Shell as Administrator on Windows (for automatic updating of your hosts file)
 
 Along with those dependencies, there are some assumptions this command makes:
 
-* If on Windows, Docker for Windows only works on Windows 10 Professional. If you're on Windows 10 Home, try Docker Toolbox, but mileage may vary
+* If on Windows, Docker for Windows only works on Windows 10 Professional. If you're on a different version of Windows, try Docker Toolbox, but mileage may vary
 * This assumes you use the default ports, IPs, and basic out-of-the-box functionality of Docker. 10.0.75.0 is the IP address it likes to route, 0.0.0.0:2075 is the port it likes to call docker on. I didn't want to mess with any of this.
 * This assumes, if you're on Windows, that you use the `C` drive for your hosts file. Sorry!
 * It probably assumes a bunch of other things.
 
-Here are some requests from anyone who finds this interesting and knows a thing or two about Bash:
-
-* Is there a way that, in the middle of installing WordPress, I can allow custom functions to be called from, say, the `_extensions/` folder?
-* What's the easiest way to create a config file for a bash script?
-
-## A caveat or two
-
-This is untested, wild technology. You have to run your terminal with administrator privileges to get the full experience. You probably shouldn't do that with something downloaded from the internet. Use this command at your own risk.
-
-When this script works, it will change your life. You will feel free as a bird, free to overcome any obstacles. But when Docker decides not to cooperate, your life will become a living nightmare. It's been less of a problem with later updates on Windows, but there is some troubleshooting involved with Docker. Most of the time it comes down to:
-
-* Is your Drive Shared with the Docker VM?
-* Run `nimble restart`
-* If that doesn't work, restart your machine.
-
-In addition:
-
-- Mac support is not guaranteed.
-- Linux support was never tested once.
-- Windows support is probable but also not guaranteed.
-
-Even I'm afraid some days. Are you afraid? If not, then you can maybe read through the script and understand what it's doing. Then you can probably even tell me how to make it better. And submit some pull requests and junk. Who knows! Either way, you're ready to move to the installation process:
+*This is untested, wild technology. Use this command at your own risk. Even I'm afraid some days. Are you afraid? If not, then you can maybe read through the script and understand what it's doing. Then you can probably even tell me how to make it better. And submit some pull requests and junk. Who knows! Either way, you're ready to move to the installation process.*
 
 ## So what does it do?
 
 This script allows you to maintain a variety of projects that will live at `http://*.local/` -- if you choose to generate certs for a project, you will also be able to access it on `https://*.local`, but it will of course be untrusted.
 
-Biased towards, WP, this script will ask if you'd like to install WP, and if so it will ask you questions during project creation about the site. It uses [wp-cli](https://github.com/wp-cli/wp-cli) to achieve this.
+If my project's name is `press`, you can use the following urls:
+
+- `http://press.local`
+- `http://phpmyadmin.press.local`
+- `http://webgrind.press.local` (if run using `nimble up profile`)
+
+Biased towards WP, this script will ask if you'd like to install WP, and if so it will ask you questions during project creation about the site. It uses [wp-cli](https://github.com/wp-cli/wp-cli) to achieve this.
 
 It will also offer to clone a Git repo (connected to your Git used in this terminal, so if you can pull it from the terminal, you can pull it with `nimble`). If you choose to clone a Git repo, it'll also offer to run `npm install` -- because I'm lazy.
 
@@ -53,9 +39,9 @@ Additionally, by default it will use my WordPress image with WP-CLI and XDebug w
 
 Even if you're not impressed by the fact that one command can boot virtually unlimited sites (I mean, we had Vagrant/VVV already, right?) this new system has a number of benefits.
 
-The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal! Just go to `_projects/yourproject.yml` and change the service/image to whatever version you would like -- the data, however, will be lost, so only do that at the start of a project.
+The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal! Just go to `_projects/yourproject.yml` and change the service/image to whatever version you would like -- the data, however, may be lost, so only do that at the start of a project.
 
-Additionally, there is a common configuration file: `docker-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already had 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours. Kind of cool.
+Additionally, there is a common configuration file: `docker-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already have 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours. Kind of cool.
 
 Now that the benefits are out of the way, let's introduce the subcommands
 
@@ -63,7 +49,7 @@ Now that the benefits are out of the way, let's introduce the subcommands
 
 I like this project to sit at `~/projects/docker`. That way it can live alongside my other projects, like `~/projects/dotnet` and `~/projects/shopify`.
 
-I also like this project to be at My Documents on Windows, at `~/Documents/projects/docker`, though that is just because it's easier to get to than your user folder when navigating Windows.
+I also like this project to be at My Documents on Windows, at `~\Documents\projects\docker`, though that is just because it's easier to get to than your user folder when navigating Windows.
 
 It may be required that it lives in your user directory... or it may not. It used to be before Docker for Windows/Docker for Mac because only your user folder was shared with the VM. You can try putting it anywhere, but if it doesn't work, you should probably put it in your user folder.
 
@@ -103,11 +89,11 @@ What a boss!
 
 This runs docker, except it will first create your custom-tailored docker-compose file and set up environment variables. **Use this instead of docker-compose up -d!**
 
-Running `nimble up profile` will start PHP with `xdebug.profiler_enable=1` and `nimble up trigger` will allow you to add `XDEBUG_PROFILE` to the end of any URL to start profiling. These profiles are accessible at `webgrind.myproject.local`
+Running `nimble up profile` will start PHP with `xdebug.profiler_enable=1` and `nimble up trigger` will allow you to add `XDEBUG_PROFILE` to the end of any URL to start profiling. These profiles are accessible at `webgrind.$project.local`
 
 ### `nimble down`
 
-This stops docker. It just runs `docker-compose down`, but I figured why have that one command be the only time you use `docker-compose`?
+This stops docker. It just runs `docker-compose down`... but I figured why have that one command be the only time you use `docker-compose`?
 
 ### `nimble restart`
 
@@ -160,5 +146,43 @@ Xdebug is supported on port 9000 for those advanced users. See [this Git repo](h
 ## PHPMyAdmin
 
 Every site generated with `nimble create` will have a respective PHPMyAdmin install at `phpmyadmin.project.local`. There is no login required for this portal.
+
+## WP Cli
+
+WP Cli is available for each project using `nimble` and the project name. This helps to not have to log in to the VM / container itself because the commands are rather obnoxious. If my project is called `press`, this would be an example command:
+
+`nimble wp press plugin install hello-dolly`
+
+Please note the current WP Cli implementation has some issues with Windows / Git Bash. I haven't been able to figure out implementing spaces in commands quite yet.
+
+## Running bash commands (useful for testing)
+
+Bash is available for each project using the subcommand `bashitup`. Please note that any changes to the container outside of WordPress / Database changes may not be preserved next time the site starts! For editing the way the site works fundamentally, you'll have to create a new docker image and edit the `$project.yml`. If my project is called `press`, this would be an example command:
+
+`nimble bashitup press date`
+
+Please note the current `bashitup` implementation has some issues with Windows / Git Bash. I haven't been able to figure out implementing spaces in commands quite yet. If you're inclined, it might be better to use it with [WSL Bash](https://msdn.microsoft.com/en-us/commandline/wsl/about).
+
+## Roadmap
+
+- PHPUnit (I've implemented this before, I just have to reimplement it in the open source version)
+- Web Templates for creating, for example, a custom NodeJS environment (`nimble create --template github.com/templatemaker/template.git`)
+- Extensions for adding functionality to the script
+- Maybe an upgrade to an actual programming language / GUI if this becomes popular
+
+# Debugging
+
+When this script works, it will change your life. But when Docker decides not to cooperate, your life will become a living nightmare. It's been less of a problem with later updates to the platform, but there is some troubleshooting involved with Docker. Most of the time it comes down to:
+
+* Is your Drive Shared with the Docker VM?
+* Run `nimble restart`
+* If that doesn't work, restart your machine.
+* If you're still having problems, feel free to PM me on WordPress Slack
+
+In addition:
+
+- Mac support is not guaranteed.
+- Linux support was never tested once.
+- Windows support is probable but also not guaranteed.
 
 ### Happy Sailing!
