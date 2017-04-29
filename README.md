@@ -186,3 +186,5 @@ In addition:
 - Windows support is probable but also not guaranteed.
 
 ### Happy Sailing!
+
+*Special thanks to [Nimblelight](http://nimblelight.com) for supporting this open source project.*
