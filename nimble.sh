@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 # Is the command ./nimble.sh or nimble
 if [[ $0 == \.* ]]; then
     command=$0
@@ -366,7 +365,7 @@ install() {
 
     echo "Installing WordPress. This could take a few seconds..."
 
-    until docker exec -i "$project" bash -c 'wp core install --path="'$inner_dir'" --url="'$url'" --title="'$title'" --admin_user="'$user'" --admin_password="'$password'" --admin_email="'$email'" --skip-email'
+    until wp "$project" core install --path="'$inner_dir'" --url="'$url'" --title="'$title'" --admin_user="'$user'" --admin_password="'$password'" --admin_email="'$email'" --skip-email
     do
         echo "WP Install Failed. Retrying..."
         sleep 2
@@ -698,7 +697,145 @@ delete() {
     fi
 }
 
-if [[ $1 =~ ^(help|wp|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update)$ ]]; then
+bashitup() {
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        return
+    elif [ "$1" == "all" ]; then
+        echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
+        return
+    fi
+
+    local project=$1
+    local inner_dir="/var/www/html"
+
+    docker exec -i "$project" bash -c "cd $inner_dir && ${*:2}"
+}
+
+# also the magic right here
+bashraw() {
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        return
+    elif [ "$1" == "all" ]; then
+        echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
+        return
+    fi
+
+    local project=$1
+
+    docker exec -i "$project" bash -c "${*:2}"
+}
+
+test() {
+
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to test! e.g., nimble test project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$2" ]]; then
+        echo "You need to provide the type of tests to create! e.g., nimble test project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$3" ]]; then
+        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    local project=$1
+    local type=$2
+    local name=$3
+    local inner_dir="/var/www/html"
+
+    bashitup $project "export WP_CORE_DIR=$inner_dir/ && cd $inner_dir/wp-content/""$type""s/$name && export WP_TESTS_DIR=./tests/mock && phpunit ${*:4}"
+}
+
+install-tests() {
+
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to scaffold tests for! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$2" ]]; then
+        echo "You need to provide the type of tests to create! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$3" ]]; then
+        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    local project=$1
+    local type=$2
+    local name=$3
+    local inner_dir="/var/www/html"
+
+    if [ ! -d sites/"$project" ]; then
+        echo "Project $project does not exist"
+        exit 1
+    fi
+
+    if [ ! -d sites/"$project"/www/wp-content/"$type"s/"$name"/tests ]; then
+        echo "$project's $type $name's tests haven't been created yet!"
+        exit 1
+    fi
+
+    bashitup $project "export WP_CORE_DIR=$inner_dir && cd $inner_dir/wp-content/""$type""s/$name && export WP_TESTS_DIR=./tests/mock && ./bin/install-wp-tests.sh wordpress-tests root example mysql"
+}
+
+create-tests() {
+
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to scaffold tests for! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$2" ]]; then
+        echo "You need to provide the type of tests to create! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    # requires project name
+    if [[ -z "$3" ]]; then
+        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
+        exit 1
+    fi
+
+    local project=$1
+    local type=$2
+    local name=$3
+    local inner_dir="/var/www/html"
+
+    if [ ! -d sites/"$project" ]; then
+        echo "Project $project does not exist"
+        exit 1
+    fi
+
+    if [ -d "$project"/www/wp-content/"$type"s/"$name"/tests ]; then
+        echo "$project's $type $name already has tests!"
+        exit 1
+    fi
+
+    bashitup $project "export WP_CORE_DIR=$inner_dir && export WP_TESTS_DIR=./tests/mock && wp scaffold $type-tests $3"
+
+    install-tests $1 $2 $3
+}
+
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bashitup|bashraw|create-tests|install-tests|test)$ ]]; then
   "$@"
 else
   help

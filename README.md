@@ -163,9 +163,20 @@ Bash is available for each project using the subcommand `bashitup`. Please note 
 
 Please note the current `bashitup` implementation has some issues with Windows / Git Bash. I haven't been able to figure out implementing spaces in commands quite yet. If you're inclined, it might be better to use it with [WSL Bash](https://msdn.microsoft.com/en-us/commandline/wsl/about).
 
+## PHPUnit
+
+Testing your Themes and plugins is possible with this framework using [my custom WP image](https://github.com/johnrom/docker-wordpress-wp-cli-xdebug). However, it is not in an ideal state, as it pollutes the plugin with test files and bootstrapping files. I want to reimplement it in a less intrusive fashion. However, if you're interested in working with WordPress and Unit Testing, this framework can help you get started without running into a ton of low-level configuration issues -- let's get right to the code! Run the following commands from the root directory, replacing `$project-name` with your project name, `$type` with "plugin" or "theme" (WP Core Tests coming soon), and `$plugin-or-theme-name` with the name of your plugin or theme. This has currently only been tested with plugins as I have not unit tested any themes!
+
+- `nimble create-tests $project-name $type $plugin-or-theme-name`
+- `nimble test $project-name $type $plugin-or-theme-name`
+
+The second command should give you an actual readout of a phpunit test, with the one default test provided in `test-sample.php`. Now you can edit it, create more files and organize your tests! Try changing `$this->assertTrue( true );` to `$this->assertTrue( false );` and see what happens.
+
+*[More about PHPUnit](https://phpunit.de/manual/current/en/writing-tests-for-phpunit.html)*
+
 ## Roadmap
 
-- PHPUnit (I've implemented this before, I just have to reimplement it in the open source version)
+- PHPUnit Reimplementation
 - Web Templates for creating, for example, a custom NodeJS environment (`nimble create --template github.com/templatemaker/template.git`)
 - Extensions for adding functionality to the script
 - Maybe an upgrade to an actual programming language / GUI if this becomes popular
