@@ -44,6 +44,14 @@ if ! [[ $command = "./nimble.sh" ]]; then
     fi
 fi
 
+docker_root="$PWD"
+project_root="$docker_root/projects"
+site_root="$project_root/sites"
+template_root=$docker_root"/_templates"
+certs_root=$project_root/_conf/certs
+argies="$@"
+template=""
+
 help(){
     echo "Create new project:"
     echo "Usage: $command create \$project"
@@ -169,6 +177,39 @@ ask() {
     done
 }
 
+args(){
+    #!/bin/bash
+    # Use -gt 1 to consume two arguments per pass in the loop (e.g. each
+    # argument has a corresponding value to go with it).
+    # Use -gt 0 to consume one or more arguments per pass in the loop (e.g.
+    # some arguments don't have a corresponding value to go with it such
+    # as in the --default example).
+    # note: if this is set to -gt 0 the /etc/hosts part is not recognized ( may be a bug )
+    local i=1
+
+    while [[ i -le "$#" ]]
+    do
+        local key="${!i}"
+        local value_index=$(($i+1))
+        local value="${!value_index}"
+
+        case $key in
+            -t|--template)
+                template="$value"
+
+                set -- "${@:1:i-1}" "${@:i+2}"
+            ;;
+            *)
+                # unknown option
+            ;;
+        esac
+
+        i=$(($i+1))
+    done
+
+    argies="$@"
+}
+
 # this is the magic right here
 wp(){
     # requires project name
@@ -195,9 +236,12 @@ localize(){
     ln -s "$source" ~/bin/nimble
 
     chmod +x ~/bin/nimble
+
+    exit $?
 }
 
 create(){
+
     # requires project name
     if [[ -z "$1" ]]; then
         help
@@ -208,36 +252,55 @@ create(){
     fi
 
     local project="$1"
-    local root="$PWD"
-    local dir=$root"/sites/"$project"/www"
+    local dir="$site_root/$project/www"
+
+    local template_folder="$template_root/$template"
+
+    if [ -z "$template" ]; then
+        template="johnrom/nimble-wp"
+
+        echo "No template specified, using default WordPress template"
+    fi
+
+    if [ ! -d "$template_folder" ]; then
+        echo "Template does not exist, fetching..."
+
+        git clone "git@github.com:$template.git" "$template_folder"
+    fi
+
+    if [ ! -f "$template_folder/template.yml" ]; then
+        echo "Invalid Template! Please check the git repo name"
+    fi
 
     # create directories
     #
     if [ -d "$dir" ]; then
-        echo "Error: Folder already exists for $project. Exiting!"
+        echo "Error: Folder already exists for project: $project. Exiting!"
         exit 1
     fi
 
-    echo "creating $project project directory"
+    echo "creating project directory: $project"
+
     mkdir -p $dir
 
+    cd $project_root
+
     if confirm "Do you want this project kept in git?" Y; then
-        touch $dir/.keep
-        git add -f $dir/.keep
+        touch "$site_root/$project/.keep"
+        git add -f "$site_root/$project/.keep"
     else
-        echo _projects/"$project".yml >> .gitignore
-        echo _conf/certs/"$project".local.crt >> .gitignore
-        echo _conf/certs/"$project".local.key >> .gitignore
+        echo "$certs_root/$project.local.crt" >> .gitignore
+        echo "$certs_root/"$project".local.key" >> .gitignore
     fi
 
     # update dev config
     #
     echo "Adding .yml file"
-    local dev_template=$(<_templates/docker-wp-template.yml)
+    local dev_template=$(<$template_root/$template/template.yml)
 
     dev_template=${dev_template//PROJECT/$project}
 
-    echo "$dev_template" > _projects/"$project".yml
+    echo "$dev_template" > "$site_root/$project/$project.yml"
 
     # starting docker-compose in detached mode
     up
@@ -249,10 +312,10 @@ up(){
     echo "emptying docker-compose.yml"
     > docker-compose.yml
 
-    local projects=./_projects/*
+    echo "emptying docker-common.yml"
+    > docker-common.yml
+
     local project
-    local this_directory="${PWD}"
-    local debug
 
     if [[ -z "$1" ]]; then
         eval "$(env)"
@@ -260,13 +323,17 @@ up(){
         eval "$(env $1)"
     fi
 
-    for project in $projects
+    for project in $(ls -d $site_root/*)
     do
-        echo "Processing $project"
+        local project_raw_name="$(basename $project)"
+        local project_name=${project_raw_name//"_"/""}
+        echo "Processing project: $project_name"
 
         # quick hack because docker for windows does not like relative directories
-        local this_template=$(<$project)
-        this_template=${this_template//DOCROOT/$this_directory}
+        local this_template=$(<$project/$project_name.yml)
+        this_template=${this_template//SITEROOT/"$site_root/$project_raw_name"}
+        this_template=${this_template//DOCROOT/"$docker_root"}
+        this_template=${this_template//COMMON/"$docker_root/docker-compose.yml"}
 
         if ! is_mac; then
             this_template=${this_template//"/mnt/f/"/"f:/"}
@@ -277,19 +344,34 @@ up(){
     done
 
     echo "Processing Common Template"
-    local common_template=$(<"_templates/docker-common-template.yml")
-    common_template=${common_template//DOCROOT/$this_directory}
 
-    if ! is_mac; then
-        echo "Replacing Mounts with Windows Paths"
+    for owner in $(ls -d $template_root/*)
+    do
+        local owner_name="$(basename $owner)"
 
-        common_template=${common_template//"/mnt/f/"/"f:/"}
-        common_template=${common_template//"/mnt/c/"/"c:/"}
-    fi
+        for template_directory in $(ls -d $template_root/$owner_name/*)
+        do
+            local repo_name="$(basename $template_directory)"
 
-    echo "$common_template" > "docker-common.yml"
+            echo "Processing template: $owner/$template_directory"
 
-    echo "Starting docker-compose in detached mode"
+            # quick hack because docker for windows does not like relative directories
+            local this_template=$(<"$template_directory/common.yml")
+
+            this_template=${this_template//DOCROOT/"$docker_root"}
+
+            if ! is_mac; then
+                this_template=${this_template//"/mnt/f/"/"f:/"}
+                this_template=${this_template//"/mnt/c/"/"c:/"}
+            fi
+
+            echo "$docker_root"
+
+            echo "$this_template" >> "$docker_root/docker-common.yml"
+        done
+    done
+
+    echo "Common templates assembled. Starting docker-compose in detached mode"
     docker-compose up -d
 }
 
@@ -303,10 +385,10 @@ down(){
     echo "removing old cachegrind files"
     local directory
 
-    for directory in $(ls sites); do
+    for directory in $(ls "$site_root"); do
 
-        if [ -d sites/$directory ]; then
-            rm sites/"$directory"/cachegrind/* >& /dev/null
+        if [ -d $site_root/"$directory" ]; then
+            rm $site_root/"$directory"/cachegrind/* >& /dev/null
         fi
     done
 
@@ -345,7 +427,7 @@ install() {
     fi
 
     if is_root; then
-        local dir=$PWD/sites/$project/www
+        local dir="$site_root/$project/www"
     fi
 
     echo "Installing WP to $dir -> $project.local"
@@ -438,22 +520,19 @@ init() {
         return
     fi
 
-    local project=$1
-    local root="$PWD"
-    local dir=$root"/sites/"$project"/www"
+    local project="$1"
+    local root="$docker_root"
+    local dir="$site_root/$project/www"
     local inner_dir="/var/www/html"
 
-    cd $dir
-
-    if [ -d .git ]; then
+    if [ -d "$dir/.git" ]; then
 
         if confirm "There is already a Git Repository in this directory. Do you want to remove this Git Repository?" N; then
-            rm -rf .git
+            rm -rf "$dir/.git"
         fi
     fi
 
     if confirm "Do you want to clone a repo?" N; then
-
         clone $project
 
         npm_install
@@ -486,7 +565,10 @@ clone() {
         return
     fi
 
-    local project=$1
+    local project="$1"
+    local dir="$site_root/$project/www"
+
+    cd $dir
 
     # Pull a repo
     ask repo "Repo URL (git@github.com:user/$project.git)" "" --required
@@ -499,6 +581,8 @@ clone() {
 
     # checkout master
     git checkout -f master
+
+    cd $docker_root
 }
 
 env() {
@@ -644,9 +728,8 @@ clean() {
 }
 
 delete_one() {
-    local project=$1
-    local root="$PWD"
-    local dir="$root/sites/$project/www"
+    local project="$1"
+    local dir="$site_root/$project/www"
 
     # Shut down docker-compose
     down
@@ -662,16 +745,13 @@ delete_one() {
 
     if confirm "Delete Project Files for $project? You could lose work! This is irreversible!" N; then
         echo "Deleting $project files"
-        rm -rf "$root/sites/$project" >& /dev/null
+        rm -rf "$site_root/$project" >& /dev/null
     fi
 
     if confirm "Delete Project Database for $project? This is also irreversible!" N; then
         echo "Deleting $project database"
         docker volume rm "$project"_db_volume >& /dev/null
     fi
-
-    echo "Deleting $project.yml"
-    rm "$root/_projects/$project.yml" >& /dev/null
 
     echo "Restarting Docker"
     restart
@@ -684,7 +764,12 @@ delete() {
     if [[ $project == "all" ]]; then
 
         if confirm "Really remove all projects from Nimble? You will be asked if you want to delete files on a per-project basis." N; then
-            for d in $(ls -d sites/*); do
+            for d in $(ls -d $site_root/*); do
+
+                if [[ $(basename $d) == _* ]]; then
+                    echo "Skipping $(basename $d)"
+                    continue
+                fi
 
                 if [ -d $d ]; then
                     echo "Deleting $(basename $d)"
@@ -782,12 +867,12 @@ install-tests() {
     local name=$3
     local inner_dir="/var/www/html"
 
-    if [ ! -d sites/"$project" ]; then
+    if [ ! -d "$site_root/$project" ]; then
         echo "Project $project does not exist"
         exit 1
     fi
 
-    if [ ! -d sites/"$project"/www/wp-content/"$type"s/"$name"/tests ]; then
+    if [ ! -d "$site_root/$project/www/wp-content/""$type""s/$name/tests" ]; then
         echo "$project's $type $name's tests haven't been created yet!"
         exit 1
     fi
@@ -820,12 +905,12 @@ create-tests() {
     local name=$3
     local inner_dir="/var/www/html"
 
-    if [ ! -d sites/"$project" ]; then
+    if [ ! -d "$site_root/$project" ]; then
         echo "Project $project does not exist"
         exit 1
     fi
 
-    if [ -d "$project"/www/wp-content/"$type"s/"$name"/tests ]; then
+    if [ -d "$site_root/$project/www/wp-content/""$type""s/$name/tests" ]; then
         echo "$project's $type $name already has tests!"
         exit 1
     fi
@@ -836,7 +921,9 @@ create-tests() {
 }
 
 if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bashitup|bashraw|create-tests|install-tests|test)$ ]]; then
-  "$@"
+    args "$@"
+
+    $argies
 else
   help
 fi

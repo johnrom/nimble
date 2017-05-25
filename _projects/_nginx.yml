@@ -1,7 +1,0 @@
-# The NGINX Reverse Proxy that routes to other containers
-
-front:
-  container_name: front
-  extends:
-    file: docker-common.yml
-    service: front
