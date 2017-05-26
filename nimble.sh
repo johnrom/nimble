@@ -25,7 +25,7 @@ fi
 
 script="$0"
 source="$PWD/_nimble/nimble.sh"
-tld="$(<_conf/.tld)"
+tld="$(<_conf/tld.conf)"
 
 if [[ -z "$tld" ]]; then
     tld="local"
@@ -98,6 +98,17 @@ is_mac(){
 
     # mac forwards loopback instead of using nat
     if [ "$(uname)" == "Darwin" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+
+is_cygwin(){
+
+    # mac forwards loopback instead of using nat
+    if [ "$(uname -s)" == "MINGW*" ]; then
         return 0
     fi
 
@@ -242,7 +253,7 @@ localize(){
 
     chmod +x ~/bin/nimble
 
-    exit $?
+    return $?
 }
 
 fetch_repo(){
@@ -302,6 +313,8 @@ create_front(){
     # adding project name in case they differ
     do_hook "$project" "before-create" "$project_name"
 
+    get_template "$template"
+
     # create directories
     #
     if [ -d "$site_dir" ]; then
@@ -313,9 +326,9 @@ create_front(){
 
     mkdir -p $site_dir
 
-    echo "$template" > "$site_dir/.template"
+    echo "$template" > "$site_dir/template.conf"
 
-    git add -f "$site_dir/.template"
+    git add -f "$site_dir/template.conf"
 
     # update dev config
     #
@@ -358,14 +371,14 @@ create(){
 
     if [ -z "$template" ]; then
 
-        if [[ -f "_conf/.defaulttemplate" ]]; then
-            template="$(<_conf/.defaulttemplate)"
-            echo "No template specified, using default template at _conf/.defaulttemplate"
+        if [[ -f "_conf/default-template.conf" ]]; then
+            template="$(<_conf/default-template.conf)"
+            echo "No template specified, using default template at _conf/default-template.conf"
         fi
 
         if [[ -z "$template" ]]; then
             template="johnrom/nimble-wp"
-            echo "No template specified and no _conf/.defaulttemplate, using default WordPress template"
+            echo "No template specified and no _conf/default-template.conf, using default WordPress template"
         fi
     fi
 
@@ -375,6 +388,7 @@ create(){
 
     if [ ! -f "$template_folder/template.yml" ]; then
         echo "Invalid Template! Please check the git repo name"
+        exit 1
     fi
 
     # create directories
@@ -388,12 +402,12 @@ create(){
 
     mkdir -p $www_dir
 
-    echo "$template" > "$site_dir/.template"
+    echo "$template" > "$site_dir/template.conf"
 
     cd $project_root
 
     if confirm "Do you want this project kept in git?" Y; then
-        git add -f "$site_dir/.template"
+        git add -f "$site_dir/template.conf"
     else
         echo "$certs_root/$project.$tld.crt" >> .gitignore
         echo "$certs_root/$project.$tld.key" >> .gitignore
@@ -419,10 +433,11 @@ create(){
 }
 
 setup(){
+    echo "huh"
     localize
-
-    if [[ ! -d "$site_root/_front" ]]; then
-
+    echo "whyyy"
+    if [ ! -f "$site_root/_front/front.yml" ]; then
+        echo "creating front?"
         create_front
     fi
 }
@@ -454,28 +469,38 @@ up(){
             echo "Warning: $project does not have a valid .yml file. Skipping!"
         else
 
-            if [[ -f "$project/.template" ]]; then
+            if [[ -f "$project/template.conf" ]]; then
                 # I am tired
-                local project_template="$(<$project/.template)"
+                local project_template="$(<$project/template.conf)"
 
                 get_template "$project_template"
             fi
 
+            # directories in the VM may be different than in your command line
+            local site_root_special="$project"
+            local nimble_root_special="$nimble_root"
+
+            if is_cygwin; then
+                site_root_special=${site_root_special//"/mnt/f/"/"f:/"}
+                site_root_special=${site_root_special//"/mnt/c/"/"c:/"}
+                nimble_root_special=${nimble_root_special//"/mnt/f/"/"f:/"}
+                nimble_root_special=${nimble_root_special//"/mnt/c/"/"c:/"}
+            else
+
+                if ! is_mac; then
+                    # bash on ubuntu for windows .. hopefully not a dual boot
+                    site_root_special=${site_root_special//"/mnt/f/"/"/f/"}
+                    site_root_special=${site_root_special//"/mnt/c/"/"/c/"}
+                    nimble_root_special=${nimble_root_special//"/mnt/f/"/"/f/"}
+                    nimble_root_special=${nimble_root_special//"/mnt/c/"/"/c/"}
+                fi
+            fi
+
             # docker does not like relative directories
             local this_template=$(<$project/$project_name.yml)
-            this_template=${this_template//SITEROOT/"$project"}
-            this_template=${this_template//NIMBLE/"$nimble_root"}
+            this_template=${this_template//SITEROOT/"$site_root_special"}
+            this_template=${this_template//NIMBLE/"$nimble_root_special"}
             this_template=${this_template//COMMON/"$nimble_root/docker-common.yml"}
-
-            if ! is_mac; then
-                this_template=${this_template//"/mnt/f/"/"f:/"}
-                this_template=${this_template//"/mnt/c/"/"c:/"}
-            fi
-
-            if ! is_mac; then
-                this_template=${this_template//"/f/"/"f:/"}
-                this_template=${this_template//"/c/"/"c:/"}
-            fi
 
             echo "$this_template" >> "docker-compose.yml"
             valid=1
@@ -504,7 +529,7 @@ up(){
                 this_template=${this_template//NIMBLE/"$nimble_root"}
                 this_template=${this_template//SITEROOT/"$nimble_root"}
 
-                if ! is_mac; then
+                if is_cygwin; then
                     this_template=${this_template//"/mnt/f/"/"f:/"}
                     this_template=${this_template//"/mnt/c/"/"c:/"}
                 fi
