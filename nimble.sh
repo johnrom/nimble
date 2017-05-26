@@ -433,11 +433,9 @@ create(){
 }
 
 setup(){
-    echo "huh"
     localize
-    echo "whyyy"
+
     if [ ! -f "$site_root/_front/front.yml" ]; then
-        echo "creating front?"
         create_front
     fi
 }
