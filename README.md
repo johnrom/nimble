@@ -1,95 +1,64 @@
-# A Nimble Docker Environment
+# Nimble
 
-*"I am not afraid of storms for I am learning how to sail my ship."*
+*A Cross-Platform Cross-Project MultiTenant Docker Environment*
 
-Welcome to `nimble`, a Docker shell project hoping to make your experience with Docker as smooth as possible. This project is particularly biased towards the use of WordPress, but it is certainly applicable to other platforms. There are a few dependencies to get the full experience out of this plugin.
+Welcome to `nimble`, a project focused on making your Docker experience as smooth as possible. The core philosophy of `nimble` is *Straight to the Code*, meaning no messing with configuration settings and environment variables in order to do a *hello world* in your application. The purpose of `nimble` is one that drives many of us -- getting right to the good stuff, and not worrying about variables outside of the code. It is about allowing your projects, your teams, or your potential customers to get *right to the code* in their first experience with a project.
 
-* Install Docker
-* Install Git on the Command Line
-* Add `~/bin` to your PATH
-* Run your Shell as Administrator on Windows (for automatic updating of your hosts file)
+Think about a PHP developer trying to install node.js for the first time. There are a million different pieces that someone new to Node will not understand. NPM? NVM? N? WAHT? Of course, you'll need to learn about all of that stuff, because it is in itself powerful. But the first thing you want is to have the thing running without a 2 hour walkthrough for setting it up. I like to reverse-engineer, so at least this is how I think. And the first time it has been set up correctly should be perfectly replicable so that these steps don't have to be repeated! I never want to read that walkthrough again! This was my first time with Docker. Figuring out how to build a site's microservices was a pain. The very first time I built an entire `docker-compose.yml` was fraught with endless errors that were almost untraceable, because you have to figure out how everything works together before *anything works at all*.
 
-Along with those dependencies, there are some assumptions this command makes:
+So here's where `nimble` comes in. Let's say, for example, I found what I think to be [a pretty good WordPress dev environment](https://github.com/johnrom/nimble-wp). What if I could ask you to check out my dev environment with a single command? If you already had `nimble` as your dev environment, that wouldn't be a problem!
 
-* If on Windows, Docker for Windows only works on Windows 10 Professional. If you're on a different version of Windows, try Docker Toolbox, but mileage may vary
-* This assumes you use the default ports, IPs, and basic out-of-the-box functionality of Docker. 10.0.75.0 is the IP address it likes to route, 0.0.0.0:2075 is the port it likes to call docker on. I didn't want to mess with any of this.
-* This assumes, if you're on Windows, that you use the `C` drive for your hosts file. Sorry!
-* It probably assumes a bunch of other things.
+### So how would this work?
 
-*This is untested, wild technology. Use this command at your own risk. Even I'm afraid some days. Are you afraid? If not, then you can maybe read through the script and understand what it's doing. Then you can probably even tell me how to make it better. And submit some pull requests and junk. Who knows! Either way, you're ready to move to the installation process.*
+First install Docker for [Windows](https://docs.docker.com/docker-for-windows/install/) or [Mac](https://docs.docker.com/docker-for-mac/install) (maybe even Linux, but I make no promises), make sure you have bash and a bash version of Git, add `~/bin` to your PATH and then let's begin.
 
-## So what does it do?
+Let's get started with a [basic drop-in environment](https://github.com/johnrom/nimble-root). I've crafted this environment to be project-neutral, but you could potentially have dozens of projects sitting there, ready to be shared with your team, or a single site ready to be booted up so a user can try out your theme. Download that environment to a nice place on your C:, F: or wherever it lives on Mac.
 
-This script allows you to maintain a variety of projects that will live at `http://*.local/` -- if you choose to generate certs for a project, you will also be able to access it on `https://*.local`, but it will of course be untrusted.
+In this environment, there isn't much but a few folders, a few git-related files, and a submodule of [Nimble](https://github.com/johnrom/nimble). If you open the `conf` folder, you'll see a `default-template.conf` and `tld.conf`. `tld.conf` just says "this is the TLD for my sites". I like `mysite.local`, but you can switch this to `mysite.dev` or whatever, at any time. However, the magic really happens in `default-template.conf`. `default-template.conf` is a file with one line saying what Git repo to use as a template to spin up new projects. By default, it is the previously mentioned [WordPress Environment](https://github.com/johnrom/nimble-wp), but it could be this basic [Ghost Nodejs Environment](https://github.com/johnrom/nimble-ghost). Let's leave these files as they are for now, though.
 
-If my project's name is `press`, you can use the following urls:
+Our first step is to set up a reverse proxy so any sites you create can be accessed via your browser. Boot up a command line, BASH, Git Bash, Terminal, etc, with admin/sudo privileges within the directory you downloaded the drop-in environment, and run:
 
-- `http://press.local`
-- `http://phpmyadmin.press.local`
-- `http://webgrind.press.local` (if run using `nimble up profile`)
+`./_nimble/nimble.sh setup`
 
-Biased towards WP, this script will ask if you'd like to install WP, and if so it will ask you questions during project creation about the site. It uses [wp-cli](https://github.com/wp-cli/wp-cli) to achieve this.
+If you added `~/bin` to your PATH, you can now just type `nimble`. What happened now is that a reverse proxy is sitting in a docker container listening for other web-accessible containers. Now how would you like to check out my dev environment with a single command?
 
-It will also offer to clone a Git repo (connected to your Git used in this terminal, so if you can pull it from the terminal, you can pull it with `nimble`). If you choose to clone a Git repo, it'll also offer to run `npm install` -- because I'm lazy.
+`nimble create --template johnrom/nimble-wp test`
 
-Additionally, by default it will use my WordPress image with WP-CLI and XDebug which is based on Conetix's version. With this, you can listen to WordPress using any Xdebug plugins on port `9000` for your editor of choice.
+You can run through the defaults for now, and when it asks to install WordPress enter whatever information you'd like. Congratulations! You now have `twentyseventeen` running on WordPress at `test.local`! If you're here to find out what `nimble-wp` can do for you, [check out the readme for that project](https://github.com/johnrom/nimble-wp). But for now, what can `nimble` itself do for you?
 
-- https://hub.docker.com/r/johnrom/docker-wordpress-wp-cli-xdebug/
-- https://github.com/johnrom/docker-wordpress-wp-cli-xdebug
+You'll notice that by using the `nimble-wp` template, a folder was created at `_templates/johnrom/nimble-wp`. But what if you don't like the WordPress image I used? You can copy the folder, make some changes to the docker-compose configuration, and upload it as `github.com/youruser/your-environment` and the next time you pull, you can use `--template youruser/your-environment`. I won't be offended! Then, if you want someone else to try out *your environment*, you can just tell them to create a `nimble` project using your environment.
 
-Even if you're not impressed by the fact that one command can boot virtually unlimited sites (I mean, we had Vagrant/VVV already, right?) this new system has a number of benefits.
+Whenever you'd like to start your Docker server, like on a reboot, just run `nimble up` (from the root directory), restart with `nimble restart` and shut it down with `nimble down`.
 
-The primary distinction is that MySQL, PHP, NGINX, Apache and associated software is isolated for each site. This means you can have different versions of each. Unreal! Just go to `_projects/yourproject.yml` and change the service/image to whatever version you would like -- the data, however, may be lost, so only do that at the start of a project.
+**Please be safe with your computer and only use templates that you trust**
 
-Additionally, there is a common configuration file: `docker-common.yml`, whereby a change to this file can dramatically change the outcome of a `nimble up` for **all sites** using those templates! That means even though I already have 10 sites, I was able to set them all up with XDebug and PHPMyAdmin in minutes, not hours. Kind of cool.
+This is only the beginning, so be sure to look out for a updates to this documentation once I polish up some of the other commands! For now, here is a list:
 
-Now that the benefits are out of the way, let's introduce the subcommands
+### Coming Soon
 
-## Step one: Pull this repository
+- Soon I will be introducing `hooks`, which will be a template's way of introducing custom functionality. Please make sure to use them responsibly!
+- I will be thoroughly testing Mac, as I have made significant changes to this since the last time I used one.. Feel free to report any issues you find on Mac in the meantime!
+- Testing framework: I will be attempting to expand the current phpunit test framework to other test frameworks on a per-template level, but it will be a challenge
+- Finishing the subcommands below. I recently developed the entire project to leverage templates, so some functionality may be missing / broken / buggy.
+- Reimagining configuration. The current configuration uses a file per configuration option.. which is just me being lazy. But not to worry! I'll be sure the files still work for future updates.
 
-I like this project to sit at `~/projects/docker`. That way it can live alongside my other projects, like `~/projects/dotnet` and `~/projects/shopify`.
-
-I also like this project to be at My Documents on Windows, at `~\Documents\projects\docker`, though that is just because it's easier to get to than your user folder when navigating Windows.
-
-It may be required that it lives in your user directory... or it may not. It used to be before Docker for Windows/Docker for Mac because only your user folder was shared with the VM. You can try putting it anywhere, but if it doesn't work, you should probably put it in your user folder.
-
-## Step two-point-five: Create a shortcut
-
-Whether you're in macOS or Windows, `~/bin` AKA your user binaries folder must be in your path in order to use the shortcut.
-
-In the root folder of this repo, run the command `./nimble.sh localize`. This will create a shortcut command so you don't have to type `./nimble.sh`.
-
-`./nimble.sh` => `nimble`
-
-## Step three: Check your connection to docker
-
-You must have Docker, Docker for Windows, or Docker for Mac installed for this to work. This should go without saying! I haven't had Docker Toolbox for months now, so I have no idea if this script will work with it. Maybe it does, though.
-
-To check your connection to docker, open your Terminal, Git Bash, or Ubuntu for Windows, and enter `docker ps`. You should see a table, probably empty, showing that you have no (or some) containers running. This is good. If you see an error, you will have to verify that Docker is working before continuing on. Good luck!
-
-## Step four: Create a new project!
-
-Anchors aweigh! Let's provision some sites using the `create` command, explained below.
-
-## Nimble Subcommands
+## Old Documentation (TODO)
 
 ### `nimble create mysite`
 
 - creates folders
-- creates docker-compose.yml configuration
+- downloads necessary templates
 - (optional) clones repository
 - (optional) installs NPM
 - (optional) installs WordPress
-- (optional) adds `project.local`, `phpmyadmin.project.local` and `webgrind.project.local` to your `hosts` file. Webgrind will only work if you use `nimble up profile`
+- (optional) adds to your `hosts` file.
 - starts the new containers.
-
-What a boss!
 
 ### `nimble up`
 
 This runs docker, except it will first create your custom-tailored docker-compose file and set up environment variables. **Use this instead of docker-compose up -d!**
 
-Running `nimble up profile` will start PHP with `xdebug.profiler_enable=1` and `nimble up trigger` will allow you to add `XDEBUG_PROFILE` to the end of any URL to start profiling. These profiles are accessible at `webgrind.$project.local`
+Running `nimble up profile` with the default template will start PHP with `xdebug.profiler_enable=1` and `nimble up trigger` will allow you to add `XDEBUG_PROFILE` to the end of any URL to start profiling. These profiles are accessible at `webgrind.$project.local`
 
 ### `nimble down`
 
@@ -149,15 +118,15 @@ Every site generated with `nimble create` will have a respective PHPMyAdmin inst
 
 ## WP Cli
 
-WP Cli is available for each project using `nimble` and the project name. This helps to not have to log in to the VM / container itself because the commands are rather obnoxious. If my project is called `press`, this would be an example command:
+WP Cli is available for each WordPress project using `nimble` and the project name. This helps to not have to log in to the VM / container itself because the commands are rather obnoxious. If my project is called `press`, this would be an example command:
 
 `nimble wp press plugin install hello-dolly`
 
-Please note the current WP Cli implementation has some issues with Windows / Git Bash. I haven't been able to figure out implementing spaces in commands quite yet.
+Please note the current WP Cli implementation has some issues with Windows / Git Bash. I haven't been able to figure out implementing spaces in some arguments quite yet.
 
 ## Running bash commands (useful for testing)
 
-Bash is available for each project using the subcommand `bashitup`. Please note that any changes to the container outside of WordPress / Database changes may not be preserved next time the site starts! For editing the way the site works fundamentally, you'll have to create a new docker image and edit the `$project.yml`. If my project is called `press`, this would be an example command:
+Bash is available for each project using the subcommand `bash`. Please note that any changes to the container outside of WordPress / Database changes may not be preserved next time the site starts! For editing the way the site works fundamentally, you'll have to create a new docker image and edit the `$project.yml`. If my project is called `press`, this would be an example command:
 
 `nimble bashitup press date`
 
@@ -165,7 +134,7 @@ Please note the current `bashitup` implementation has some issues with Windows /
 
 ## PHPUnit
 
-Testing your Themes and plugins is possible with this framework using [my custom WP image](https://github.com/johnrom/docker-wordpress-wp-cli-xdebug). However, it is not in an ideal state, as it pollutes the plugin with test files and bootstrapping files. I want to reimplement it in a less intrusive fashion. However, if you're interested in working with WordPress and Unit Testing, this framework can help you get started without running into a ton of low-level configuration issues -- let's get right to the code! Run the following commands from the root directory, replacing `$project-name` with your project name, `$type` with "plugin" or "theme" (WP Core Tests coming soon), and `$plugin-or-theme-name` with the name of your plugin or theme. This has currently only been tested with plugins as I have not unit tested any themes!
+Testing your Themes and plugins is possible with this framework using [my custom WP image](https://github.com/johnrom/docker-wordpress-wp-cli-xdebug). However, it is not in an ideal state, as it pollutes the plugin with test files and bootstrapping files. I want to reimplement it in a less intrusive fashion. However, if you're interested in working with WordPress and Unit Testing, this framework can help you get started without running into a ton of low-level configuration issues -- let's get *right to the code*! Run the following commands from the root directory, replacing `$project-name` with your project name, `$type` with "plugin" or "theme" (WP Core Tests coming soon), and `$plugin-or-theme-name` with the name of your plugin or theme. This has currently only been tested with plugins as I have not unit tested any themes!
 
 - `nimble create-tests $project-name $type $plugin-or-theme-name`
 - `nimble test $project-name $type $plugin-or-theme-name`

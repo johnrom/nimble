@@ -107,8 +107,8 @@ is_mac(){
 
 is_cygwin(){
 
-    # mac forwards loopback instead of using nat
-    if [ "$(uname -s)" == "MINGW*" ]; then
+    # check for mingw windows for handling of directories
+    if [[ "$(uname -s)" = MINGW* ]]; then
         return 0
     fi
 
@@ -475,30 +475,38 @@ up(){
             fi
 
             # directories in the VM may be different than in your command line
-            local site_root_special="$project"
-            local nimble_root_special="$nimble_root"
+            local site_root_command_line="$project"
+            local nimble_root_command_line="$nimble_root"
+            local site_root_vm="$project"
+            local nimble_root_vm="$nimble_root"
 
             if is_cygwin; then
-                site_root_special=${site_root_special//"/mnt/f/"/"f:/"}
-                site_root_special=${site_root_special//"/mnt/c/"/"c:/"}
-                nimble_root_special=${nimble_root_special//"/mnt/f/"/"f:/"}
-                nimble_root_special=${nimble_root_special//"/mnt/c/"/"c:/"}
+                echo "huh"
+                echo "$site_root_command_line"
+                nimble_root_command_line=${nimble_root_command_line//"/mnt/f/"/"f:/"}
+                nimble_root_command_line=${nimble_root_command_line//"/mnt/c/"/"c:/"}
+                nimble_root_command_line=${nimble_root_command_line//"/f/"/"f:/"}
+                nimble_root_command_line=${nimble_root_command_line//"/c/"/"c:/"}
+                site_root_command_line=${site_root_command_line//"/mnt/f/"/"f:/"}
+                site_root_command_line=${site_root_command_line//"/mnt/c/"/"c:/"}
+                site_root_command_line=${site_root_command_line//"/f/"/"f:/"}
+                site_root_command_line=${site_root_command_line//"/c/"/"c:/"}
             else
 
                 if ! is_mac; then
                     # bash on ubuntu for windows .. hopefully not a dual boot
-                    site_root_special=${site_root_special//"/mnt/f/"/"/f/"}
-                    site_root_special=${site_root_special//"/mnt/c/"/"/c/"}
-                    nimble_root_special=${nimble_root_special//"/mnt/f/"/"/f/"}
-                    nimble_root_special=${nimble_root_special//"/mnt/c/"/"/c/"}
+                    site_root_vm=${site_root_vm//"/mnt/f/"/"/f/"}
+                    site_root_vm=${site_root_vm//"/mnt/c/"/"/c/"}
+                    nimble_root_vm=${nimble_root_vm//"/mnt/f/"/"/f/"}
+                    nimble_root_vm=${nimble_root_vm//"/mnt/c/"/"/c/"}
                 fi
             fi
 
             # docker does not like relative directories
             local this_template=$(<$project/$project_name.yml)
-            this_template=${this_template//SITEROOT/"$site_root_special"}
-            this_template=${this_template//NIMBLE/"$nimble_root_special"}
-            this_template=${this_template//COMMON/"$nimble_root/docker-common.yml"}
+            this_template=${this_template//SITEROOT/"$site_root_vm"}
+            this_template=${this_template//NIMBLE/"$nimble_root_vm"}
+            this_template=${this_template//COMMON/"$nimble_root_command_line/docker-common.yml"}
 
             echo "$this_template" >> "docker-compose.yml"
             valid=1
@@ -528,8 +536,8 @@ up(){
                 this_template=${this_template//SITEROOT/"$nimble_root"}
 
                 if is_cygwin; then
-                    this_template=${this_template//"/mnt/f/"/"f:/"}
-                    this_template=${this_template//"/mnt/c/"/"c:/"}
+                    this_template=${this_template//"/mnt/f/"/"/f/"}
+                    this_template=${this_template//"/mnt/c/"/"/f/"}
                 fi
 
                 echo "$this_template" >> "$nimble_root/docker-common.yml"
