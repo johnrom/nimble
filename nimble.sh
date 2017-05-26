@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Is the command ./nimble.sh or nimble
+# Is the command ./_nimble/nimble.sh or nimble
 if [[ $0 == \.* ]]; then
     command=$0
 else
@@ -24,7 +24,12 @@ else
 fi
 
 script="$0"
-source="$PWD/nimble.sh"
+source="$PWD/_nimble/nimble.sh"
+tld="$(<_conf/.tld)"
+
+if [[ -z "$tld" ]]; then
+    tld="local"
+fi
 
 # Check that we're running in docker root directory
 if [[ ! -f $source ]]; then
@@ -34,7 +39,7 @@ fi
 
 # If file is not source, check that file is the same as source
 # If not, call source, and replace this file
-if ! [[ $command = "./nimble.sh" ]]; then
+if ! [[ $command = "./_nimble/nimble.sh" ]]; then
     if ! cmp -s "$script" "$source"; then
         $source $@
         $source localize
@@ -44,15 +49,18 @@ if ! [[ $command = "./nimble.sh" ]]; then
     fi
 fi
 
-docker_root="$PWD"
-project_root="$docker_root/projects"
+nimble_root="$PWD"
+project_root="$nimble_root"
 site_root="$project_root/sites"
-template_root=$docker_root"/_templates"
+template_root=$project_root"/_templates"
 certs_root=$project_root/_conf/certs
 argies="$@"
 template=""
 
 help(){
+    echo "Setup:"
+    echo "Usage: $command setup"
+    echo "Sets up your environment"
     echo "Create new project:"
     echo "Usage: $command create \$project"
     echo "Init project:"
@@ -76,9 +84,8 @@ help(){
 }
 
 is_root(){
-    source="$PWD/nimble.sh"
 
-    # hopefully they don't have a nimble.sh in the wrong directory
+    # if script is found, we're ok. if not... ut oh
     if [[ -f $source ]]; then
         return 0
     fi
@@ -231,13 +238,104 @@ localize(){
     mkdir ~/bin >& /dev/null
     rm ~/bin/nimble >& /dev/null
 
-    local source="$PWD/nimble.sh"
-
     ln -s "$source" ~/bin/nimble
 
     chmod +x ~/bin/nimble
 
     exit $?
+}
+
+fetch_repo(){
+
+    if [[ -z "$1" ]]; then
+        echo "Please enter a repo name like 'owner/repo'"
+        exit 1
+    fi
+
+    if [[ -z "$2" ]]; then
+        echo "Please enter a directory"
+        exit 1
+    fi
+
+    mkdir -p "$2"
+
+    git clone "git@github.com:$1.git" "$2"
+}
+
+get_template(){
+
+    if [[ -z "$1" ]]; then
+        echo "Please select a template"
+        exit 1
+    fi
+
+    local template_dir="$template_root/$1"
+
+    if [ ! -d "$template_dir" ]; then
+        echo "Template $1 does not exist, fetching..."
+
+        fetch_repo "$1" "$template_dir"
+    fi
+
+    if [ ! -f "$template_dir/template.yml" ]; then
+        echo "Invalid Template! Please check the git repo name"
+    fi
+}
+
+do_hook(){
+    # coming soon
+    return
+}
+
+create_front(){
+    #
+    # ugh I should redo this
+    #
+    local oldtemplate=template
+    template="johnrom/nimble-nginx-proxy"
+
+    local project="_front"
+    local project_name="${project//_/}"
+    local site_dir="$site_root/$project"
+    local template_dir="$template_root/$template"
+
+    # adding project name in case they differ
+    do_hook "$project" "before-create" "$project_name"
+
+    # create directories
+    #
+    if [ -d "$site_dir" ]; then
+        echo "Error: Folder already exists for project: $project. Exiting!"
+        exit 1
+    fi
+
+    echo "creating project directory: $project"
+
+    mkdir -p $site_dir
+
+    echo "$template" > "$site_dir/.template"
+
+    git add -f "$site_dir/.template"
+
+    # update dev config
+    #
+    echo "Adding .yml file"
+    local dev_template=$(<$template_dir/template.yml)
+
+    echo "$dev_template" > "$site_dir/$project_name.yml"
+
+    if [[ -d "$template_dir/conf" ]]; then
+        cp -R "$template_dir/conf" "$site_dir/conf"
+    fi
+
+    if [[ -d "$template_dir/hooks" ]]; then
+        cp -R "$template_dir/hooks" "$site_dir/hooks"
+    fi
+
+    # adding project name in case they differ
+    do_hook "$project" "after-create" "$project_name"
+
+    template="$oldtemplate"
 }
 
 create(){
@@ -252,21 +350,28 @@ create(){
     fi
 
     local project="$1"
-    local dir="$site_root/$project/www"
+    local site_dir="$site_root/$project"
+    local www_dir="$site_root/$project"
+
+    # adding project name in case they differ
+    do_hook "$project" "before-create" "$project_name"
+
+    if [ -z "$template" ]; then
+
+        if [[ -f "_conf/.defaulttemplate" ]]; then
+            template="$(<_conf/.defaulttemplate)"
+            echo "No template specified, using default template at _conf/.defaulttemplate"
+        fi
+
+        if [[ -z "$template" ]]; then
+            template="johnrom/nimble-wp"
+            echo "No template specified and no _conf/.defaulttemplate, using default WordPress template"
+        fi
+    fi
 
     local template_folder="$template_root/$template"
 
-    if [ -z "$template" ]; then
-        template="johnrom/nimble-wp"
-
-        echo "No template specified, using default WordPress template"
-    fi
-
-    if [ ! -d "$template_folder" ]; then
-        echo "Template does not exist, fetching..."
-
-        git clone "git@github.com:$template.git" "$template_folder"
-    fi
+    get_template "$template"
 
     if [ ! -f "$template_folder/template.yml" ]; then
         echo "Invalid Template! Please check the git repo name"
@@ -274,23 +379,24 @@ create(){
 
     # create directories
     #
-    if [ -d "$dir" ]; then
+    if [ -d "$site_dir" ]; then
         echo "Error: Folder already exists for project: $project. Exiting!"
         exit 1
     fi
 
     echo "creating project directory: $project"
 
-    mkdir -p $dir
+    mkdir -p $www_dir
+
+    echo "$template" > "$site_dir/.template"
 
     cd $project_root
 
     if confirm "Do you want this project kept in git?" Y; then
-        touch "$site_root/$project/.keep"
-        git add -f "$site_root/$project/.keep"
+        git add -f "$site_dir/.template"
     else
-        echo "$certs_root/$project.local.crt" >> .gitignore
-        echo "$certs_root/"$project".local.key" >> .gitignore
+        echo "$certs_root/$project.$tld.crt" >> .gitignore
+        echo "$certs_root/$project.$tld.key" >> .gitignore
     fi
 
     # update dev config
@@ -299,13 +405,26 @@ create(){
     local dev_template=$(<$template_root/$template/template.yml)
 
     dev_template=${dev_template//PROJECT/$project}
+    dev_template=${dev_template//TLD/$tld}
 
     echo "$dev_template" > "$site_root/$project/$project.yml"
+
+    # adding project name in case they differ
+    do_hook "$project" "after-create" "$project_name"
 
     # starting docker-compose in detached mode
     up
 
     init $project
+}
+
+setup(){
+    localize
+
+    if [[ ! -d "$site_root/_front" ]]; then
+
+        create_front
+    fi
 }
 
 up(){
@@ -316,6 +435,7 @@ up(){
     > docker-common.yml
 
     local project
+    local valid=0
 
     if [[ -z "$1" ]]; then
         eval "$(env)"
@@ -327,20 +447,39 @@ up(){
     do
         local project_raw_name="$(basename $project)"
         local project_name=${project_raw_name//"_"/""}
+
         echo "Processing project: $project_name"
 
-        # quick hack because docker for windows does not like relative directories
-        local this_template=$(<$project/$project_name.yml)
-        this_template=${this_template//SITEROOT/"$site_root/$project_raw_name"}
-        this_template=${this_template//DOCROOT/"$docker_root"}
-        this_template=${this_template//COMMON/"$docker_root/docker-compose.yml"}
+        if [[ ! -f $project/$project_name.yml ]]; then
+            echo "Warning: $project does not have a valid .yml file. Skipping!"
+        else
 
-        if ! is_mac; then
-            this_template=${this_template//"/mnt/f/"/"f:/"}
-            this_template=${this_template//"/mnt/c/"/"c:/"}
+            if [[ -f "$project/.template" ]]; then
+                # I am tired
+                local project_template="$(<$project/.template)"
+
+                get_template "$project_template"
+            fi
+
+            # docker does not like relative directories
+            local this_template=$(<$project/$project_name.yml)
+            this_template=${this_template//SITEROOT/"$project"}
+            this_template=${this_template//NIMBLE/"$nimble_root"}
+            this_template=${this_template//COMMON/"$nimble_root/docker-common.yml"}
+
+            if ! is_mac; then
+                this_template=${this_template//"/mnt/f/"/"f:/"}
+                this_template=${this_template//"/mnt/c/"/"c:/"}
+            fi
+
+            if ! is_mac; then
+                this_template=${this_template//"/f/"/"f:/"}
+                this_template=${this_template//"/c/"/"c:/"}
+            fi
+
+            echo "$this_template" >> "docker-compose.yml"
+            valid=1
         fi
-
-        echo "$this_template" >> "docker-compose.yml"
     done
 
     echo "Processing Common Template"
@@ -353,26 +492,35 @@ up(){
         do
             local repo_name="$(basename $template_directory)"
 
-            echo "Processing template: $owner/$template_directory"
+            echo "Processing template: $owner_name/$repo_name"
 
-            # quick hack because docker for windows does not like relative directories
-            local this_template=$(<"$template_directory/common.yml")
+            if [[ ! -f "$template_directory/common.yml" ]]; then
+                echo "Warning: $owner_name/$repo_name does not have a valid common file. Skipping!"
+            else
 
-            this_template=${this_template//DOCROOT/"$docker_root"}
+                # quick hack because docker for windows does not like relative directories
+                local this_template=$(<"$template_directory/common.yml")
 
-            if ! is_mac; then
-                this_template=${this_template//"/mnt/f/"/"f:/"}
-                this_template=${this_template//"/mnt/c/"/"c:/"}
+                this_template=${this_template//NIMBLE/"$nimble_root"}
+                this_template=${this_template//SITEROOT/"$nimble_root"}
+
+                if ! is_mac; then
+                    this_template=${this_template//"/mnt/f/"/"f:/"}
+                    this_template=${this_template//"/mnt/c/"/"c:/"}
+                fi
+
+                echo "$this_template" >> "$nimble_root/docker-common.yml"
             fi
-
-            echo "$docker_root"
-
-            echo "$this_template" >> "$docker_root/docker-common.yml"
         done
     done
 
-    echo "Common templates assembled. Starting docker-compose in detached mode"
-    docker-compose up -d
+    if [[ $valid = 1 ]]; then
+
+        echo "Common templates assembled. Starting docker-compose in detached mode"
+        docker-compose up -d
+    else
+        echo "Did not find any valid projects! Did you run setup?: nimble setup"
+    fi
 }
 
 down(){
@@ -430,9 +578,9 @@ install() {
         local dir="$site_root/$project/www"
     fi
 
-    echo "Installing WP to $dir -> $project.local"
+    local url="$project.$tld"
 
-    local url="$project.local"
+    echo "Installing WP to $dir -> $url"
 
     ask title "Site Title" "$project"
     ask user "Admin User" "admin" --required
@@ -457,7 +605,7 @@ install() {
 migrate() {
     local project=$1
     local inner_dir="/var/www/html"
-    local url="$project.local"
+    local url="$project.$tld"
     local remote
 
     if [[ -z $project ]];
@@ -495,9 +643,9 @@ cert() {
 
     openssl req \
         -newkey rsa:2048 -nodes \
-        -subj "//C=US\ST=Pennsylvania\L=Philadelphia\O=MYORGANIZATION\CN=$project.local" \
-        -keyout $PWD/_conf/certs/"$project.local.key" \
-        -x509 -days 365 -out $PWD/_conf/certs/"$project.local.crt"
+        -subj "//C=US\ST=Pennsylvania\L=Philadelphia\O=MYORGANIZATION\CN=$project.$tld" \
+        -keyout $PWD/_conf/certs/"$project.$tld.key" \
+        -x509 -days 365 -out $PWD/_conf/certs/"$project.$tld.crt"
 }
 
 npm_install() {
@@ -521,7 +669,7 @@ init() {
     fi
 
     local project="$1"
-    local root="$docker_root"
+    local root="$nimble_root"
     local dir="$site_root/$project/www"
     local inner_dir="/var/www/html"
 
@@ -582,7 +730,7 @@ clone() {
     # checkout master
     git checkout -f master
 
-    cd $docker_root
+    cd $nimble_root
 }
 
 env() {
@@ -648,9 +796,9 @@ hosts() {
 
     # Editing Hosts
     #
-    echo "Adding "$project".local to hosts file at $ip"
-    echo "Adding phpmyadmin."$project".local to hosts file at $ip"
-    echo "Adding webgrind."$project".local to hosts file at $ip"
+    echo "Adding $project.$tld to hosts file at $ip"
+    echo "Adding phpmyadmin.$project.$tld to hosts file at $ip"
+    echo "Adding webgrind.$project.$tld to hosts file at $ip"
 
     x=$(tail -c 1 "$file")
 
@@ -659,9 +807,9 @@ hosts() {
         echo "" >> $file
     fi
 
-    echo "$ip "$project".local" >> "$file"
-    echo "$ip phpmyadmin."$project".local" >> "$file"
-    echo "$ip webgrind."$project".local" >> "$file"
+    echo "$ip $project.$tld" >> "$file"
+    echo "$ip phpmyadmin.$project.$tld" >> "$file"
+    echo "$ip webgrind.$project.$tld" >> "$file"
 }
 
 rmhosts() {
@@ -691,7 +839,7 @@ rmhosts() {
     local tab="$(printf '\t') "
 
     echo "Removing $project from $file"
-    grep -vE "\s((phpmyadmin|webgrind)\.)?$project\.local" "$file" > hosts.tmp && cat hosts.tmp > "$file"
+    grep -vE "\s((phpmyadmin|webgrind)\.)?$project\.$tld" "$file" > hosts.tmp && cat hosts.tmp > "$file"
 
     rm hosts.tmp
 }
@@ -793,7 +941,11 @@ bashitup() {
     fi
 
     local project=$1
-    local inner_dir="/var/www/html"
+    local inner_dir="/"
+
+    if [[ -z "$2" ]]; then
+        inner_dir="$2"
+    fi
 
     docker exec -i "$project" bash -c "cd $inner_dir && ${*:2}"
 }
@@ -920,7 +1072,12 @@ create-tests() {
     install-tests $1 $2 $3
 }
 
-if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bashitup|bashraw|create-tests|install-tests|test)$ ]]; then
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup)$ ]]; then
+
+    if [[ $1 = "bash" ]]; then
+        set -- "bashitup" "${@:2}"
+    fi
+
     args "$@"
 
     $argies
