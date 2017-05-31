@@ -37,52 +37,6 @@ if [[ ! -f $source ]]; then
     exit 1
 fi
 
-# If file is not source, check that file is the same as source
-# If not, call source, and replace this file
-if ! [[ $command = "./_nimble/nimble.sh" ]]; then
-    if ! cmp -s "$script" "$source"; then
-        $source $@
-        $source localize
-
-        # Exit with source exit code
-        exit $?
-    fi
-fi
-
-nimble_root="$PWD"
-project_root="$nimble_root"
-site_root="$project_root/sites"
-template_root=$project_root"/_templates"
-certs_root=$project_root/_conf/certs
-argies="$@"
-template=""
-
-help(){
-    echo "Setup:"
-    echo "Usage: $command setup"
-    echo "Sets up your environment"
-    echo "Create new project:"
-    echo "Usage: $command create \$project"
-    echo "Init project:"
-    echo "Usage: $command init \$project"
-    echo "Install WP DB:"
-    echo "Usage: $command install \$project"
-    echo "Add Site to Hosts:"
-    echo "Usage: $command hosts \$project"
-    echo "Remove Site from Hosts:"
-    echo "Usage: $command rmhosts \$project"
-    echo "Delete all docker containers"
-    echo "Usage: $command clear"
-    echo "Delete all docker containers AND IMAGES!"
-    echo "Usage: $command clear all"
-    echo "Clean old docker volumes"
-    echo "Usage: $command clean volumes"
-    echo "Delete a project"
-    echo "Usage: $command delete \$project"
-    echo "Delete all projects"
-    echo "Usage: $command delete all"
-}
-
 is_root(){
 
     # if script is found, we're ok. if not... ut oh
@@ -114,6 +68,88 @@ is_cygwin(){
 
     return 1
 }
+
+# If file is not source, check that file is the same as source
+# If not, call source, and replace this file
+if ! [[ $command = "./_nimble/nimble.sh" ]]; then
+    if ! cmp -s "$script" "$source"; then
+        $source $@
+        $source localize
+
+        # Exit with source exit code
+        exit $?
+    fi
+fi
+
+nimble_root="$PWD"
+project_root="$nimble_root"
+site_root="$project_root/sites"
+template_root="$project_root/_templates"
+images_root="$project_root/images"
+certs_root=$project_root/_conf/certs
+argies="$@"
+template=""
+
+# directories in the VM may be different than in your command line
+# i should make this nicer
+nimble_root_command_line="$nimble_root"
+nimble_root_vm="$nimble_root"
+images_root_command_line="$images_root"
+images_root_vm="$images_root"
+site_root_command_line="$site_root"
+site_root_vm="$site_root"
+
+help(){
+    echo "Setup:"
+    echo "Usage: $command setup"
+    echo "Sets up your environment"
+    echo "Create new project:"
+    echo "Usage: $command create \$project"
+    echo "Init project:"
+    echo "Usage: $command init \$project"
+    echo "Install WP DB:"
+    echo "Usage: $command install \$project"
+    echo "Add Site to Hosts:"
+    echo "Usage: $command hosts \$project"
+    echo "Remove Site from Hosts:"
+    echo "Usage: $command rmhosts \$project"
+    echo "Delete all docker containers"
+    echo "Usage: $command clear"
+    echo "Delete all docker containers AND IMAGES!"
+    echo "Usage: $command clear all"
+    echo "Clean old docker volumes"
+    echo "Usage: $command clean volumes"
+    echo "Delete a project"
+    echo "Usage: $command delete \$project"
+    echo "Delete all projects"
+    echo "Usage: $command delete all"
+}
+
+if is_cygwin; then
+    nimble_root_command_line=${nimble_root_command_line//"/mnt/f/"/"f:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/mnt/c/"/"c:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/f/"/"f:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/c/"/"c:/"}
+    images_root_command_line=${images_root_command_line//"/mnt/f/"/"f:/"}
+    images_root_command_line=${images_root_command_line//"/mnt/c/"/"c:/"}
+    images_root_command_line=${images_root_command_line//"/f/"/"f:/"}
+    images_root_command_line=${images_root_command_line//"/c/"/"c:/"}
+    site_root_command_line=${site_root_command_line//"/mnt/f/"/"f:/"}
+    site_root_command_line=${site_root_command_line//"/mnt/c/"/"c:/"}
+    site_root_command_line=${site_root_command_line//"/f/"/"f:/"}
+    site_root_command_line=${site_root_command_line//"/c/"/"c:/"}
+else
+
+    if ! is_mac; then
+        # bash on ubuntu for windows .. hopefully not a dual boot
+        nimble_root_vm=${nimble_root_vm//"/mnt/f/"/"/f/"}
+        nimble_root_vm=${nimble_root_vm//"/mnt/c/"/"/c/"}
+        images_root_vm=${images_root_vm//"/mnt/f/"/"/f/"}
+        images_root_vm=${images_root_vm//"/mnt/c/"/"/c/"}
+        site_root_vm=${site_root_vm//"/mnt/f/"/"/f/"}
+        site_root_vm=${site_root_vm//"/mnt/c/"/"/c/"}
+    fi
+fi
 
 
 # nice yes/no function
@@ -294,8 +330,43 @@ get_template(){
 }
 
 do_hook(){
-    # coming soon
-    return
+    local project="$1"
+    local hook="$2"
+
+    if [[ -z "$project" ]]; then
+        echo "do_hook requires a project!"
+        return 1
+    fi
+
+    if [[ -z "$hook" ]]; then
+        echo "do_hook requires a hook (obvs)!"
+        return 1
+    fi
+
+    if [ -f "$site_root/$project/hooks/$hook.sh" ]; then
+        source "$site_root/$project/hooks/$hook.sh"
+    else
+        echo "Could not find a local hook. Using Template hook"
+
+        if [[ -z "$template" ]]; then
+            if [[ -f "$site_root/$project/template.conf" ]]; then
+                local project_template="$(<$site_root/$project/template.conf)"
+            fi
+        else
+            local project_template="$template"
+        fi
+
+        if [[ ! -z "$project_template" ]]; then
+
+            if [[ -f "$template_root/$project_template/hooks/$hook.sh" ]]; then
+                source "$template_root/$project_template/hooks/$hook.sh"
+            else
+                echo "Could not find project template hook"
+            fi
+        else
+            echo "No template found"
+        fi
+    fi
 }
 
 create_front(){
@@ -474,38 +545,11 @@ up(){
                 get_template "$project_template"
             fi
 
-            # directories in the VM may be different than in your command line
-            local site_root_command_line="$project"
-            local nimble_root_command_line="$nimble_root"
-            local site_root_vm="$project"
-            local nimble_root_vm="$nimble_root"
-
-            if is_cygwin; then
-                echo "huh"
-                echo "$site_root_command_line"
-                nimble_root_command_line=${nimble_root_command_line//"/mnt/f/"/"f:/"}
-                nimble_root_command_line=${nimble_root_command_line//"/mnt/c/"/"c:/"}
-                nimble_root_command_line=${nimble_root_command_line//"/f/"/"f:/"}
-                nimble_root_command_line=${nimble_root_command_line//"/c/"/"c:/"}
-                site_root_command_line=${site_root_command_line//"/mnt/f/"/"f:/"}
-                site_root_command_line=${site_root_command_line//"/mnt/c/"/"c:/"}
-                site_root_command_line=${site_root_command_line//"/f/"/"f:/"}
-                site_root_command_line=${site_root_command_line//"/c/"/"c:/"}
-            else
-
-                if ! is_mac; then
-                    # bash on ubuntu for windows .. hopefully not a dual boot
-                    site_root_vm=${site_root_vm//"/mnt/f/"/"/f/"}
-                    site_root_vm=${site_root_vm//"/mnt/c/"/"/c/"}
-                    nimble_root_vm=${nimble_root_vm//"/mnt/f/"/"/f/"}
-                    nimble_root_vm=${nimble_root_vm//"/mnt/c/"/"/c/"}
-                fi
-            fi
-
             # docker does not like relative directories
             local this_template=$(<$project/$project_name.yml)
-            this_template=${this_template//SITEROOT/"$site_root_vm"}
+            this_template=${this_template//SITEROOT/"$site_root_vm/$project_raw_name"}
             this_template=${this_template//NIMBLE/"$nimble_root_vm"}
+            this_template=${this_template//IMAGES/"$images_root_command_line"}
             this_template=${this_template//COMMON/"$nimble_root_command_line/docker-common.yml"}
 
             echo "$this_template" >> "docker-compose.yml"
@@ -533,7 +577,7 @@ up(){
                 local this_template=$(<"$template_directory/common.yml")
 
                 this_template=${this_template//NIMBLE/"$nimble_root"}
-                this_template=${this_template//SITEROOT/"$nimble_root"}
+                this_template=${this_template//IMAGES/"$images_root_command_line"}
 
                 if is_cygwin; then
                     this_template=${this_template//"/mnt/f/"/"/f/"}
@@ -595,42 +639,12 @@ restart(){
     up
 }
 
-install() {
-    local project=$1
-    local dir="."
-    local inner_dir="/var/www/html"
+install(){
+    do_hook "$1" install
+}
 
-    if [[ -z "$project" ]]; then
-        echo "Please enter a project to install! e.g. nimble install myproject"
-        return
-    fi
-
-    if is_root; then
-        local dir="$site_root/$project/www"
-    fi
-
-    local url="$project.$tld"
-
-    echo "Installing WP to $dir -> $url"
-
-    ask title "Site Title" "$project"
-    ask user "Admin User" "admin" --required
-    ask password "Admin Password" "password" --required
-    ask email "Admin Email" "$(git config user.email)" --required
-
-    echo "Waiting for WordPress at $dir/wp-config.php"
-    while [ ! -f $dir/wp-config.php ]
-    do
-        sleep 2
-    done
-
-    echo "Installing WordPress. This could take a few seconds..."
-
-    until wp "$project" core install --path="'$inner_dir'" --url="'$url'" --title="'$title'" --admin_user="'$user'" --admin_password="'$password'" --admin_email="'$email'" --skip-email
-    do
-        echo "WP Install Failed. Retrying..."
-        sleep 2
-    done
+run(){
+    do_hook "$1" run "$@"
 }
 
 migrate() {
@@ -693,6 +707,7 @@ init() {
 
     if [[ -z "$1" ]]; then
         help
+
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with other things. Try a new name!"
@@ -717,11 +732,11 @@ init() {
         npm_install
     fi
 
+    cd $OLDPWD
+
     if confirm "Do you want to add this project to your hosts?" Y; then
         hosts $project
     fi
-
-    cd $OLDPWD
 
     if confirm "Do you want to generate certificates for this site?" Y; then
         cert $project
@@ -730,7 +745,7 @@ init() {
     up
 
     if confirm "Do you want to install WordPress?" Y; then
-        install $project
+        install "$project"
     fi
 }
 
@@ -971,14 +986,9 @@ bashitup() {
         return
     fi
 
-    local project=$1
-    local inner_dir="/"
+    local project="$1"
 
-    if [[ -z "$2" ]]; then
-        inner_dir="$2"
-    fi
-
-    docker exec -i "$project" bash -c "cd $inner_dir && ${*:2}"
+    docker exec -it "$project" bash -c "${*:2}"
 }
 
 # also the magic right here
@@ -1103,7 +1113,7 @@ create-tests() {
     install-tests $1 $2 $3
 }
 
-if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup)$ ]]; then
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run)$ ]]; then
 
     if [[ $1 = "bash" ]]; then
         set -- "bashitup" "${@:2}"
