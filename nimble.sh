@@ -329,6 +329,45 @@ get_template(){
     fi
 }
 
+has_hook(){
+    local project="$1"
+    local hook="$2"
+
+    if [[ -z "$project" ]]; then
+        echo "has_hook requires a project!"
+        return 1
+    fi
+
+    if [[ -z "$hook" ]]; then
+        echo "has_hook requires a hook (obvs)!"
+        return 1
+    fi
+
+    if [ -f "$site_root/$project/hooks/$hook.sh" ]; then
+        return 0
+
+    else
+
+        if [[ -z "$template" ]]; then
+
+            if [[ -f "$site_root/$project/template.conf" ]]; then
+                local project_template="$(<$site_root/$project/template.conf)"
+            fi
+        else
+            local project_template="$template"
+        fi
+
+        if [[ ! -z "$project_template" ]]; then
+
+            if [[ -f "$template_root/$project_template/hooks/$hook.sh" ]]; then
+                return 0
+            fi
+        fi
+    fi
+
+    return 1
+}
+
 do_hook(){
     local project="$1"
     local hook="$2"
@@ -346,7 +385,8 @@ do_hook(){
     if [ -f "$site_root/$project/hooks/$hook.sh" ]; then
         source "$site_root/$project/hooks/$hook.sh"
     else
-        echo "Could not find a local hook. Using Template hook"
+        # need a verbose feature
+        # echo "Could not find a local hook. Using Template hook"
 
         if [[ -z "$template" ]]; then
             if [[ -f "$site_root/$project/template.conf" ]]; then
@@ -361,10 +401,12 @@ do_hook(){
             if [[ -f "$template_root/$project_template/hooks/$hook.sh" ]]; then
                 source "$template_root/$project_template/hooks/$hook.sh"
             else
-                echo "Could not find project template hook"
+                # Need a verbose option
+                : # echo "Could not find project template hook"
             fi
         else
-            echo "No template found"
+            # Need a verbose option
+            : # echo "No template found"
         fi
     fi
 }
@@ -453,11 +495,11 @@ create(){
         fi
     fi
 
-    local template_folder="$template_root/$template"
+    local template_dir="$template_root/$template"
 
     get_template "$template"
 
-    if [ ! -f "$template_folder/template.yml" ]; then
+    if [ ! -f "$template_dir/template.yml" ]; then
         echo "Invalid Template! Please check the git repo name"
         exit 1
     fi
@@ -477,6 +519,9 @@ create(){
 
     cd $project_root
 
+    # adding project name in case they differ
+    do_hook "$project" "create" "$project_name"
+
     if confirm "Do you want this project kept in git?" Y; then
         git add -f "$site_dir/template.conf"
     else
@@ -487,7 +532,7 @@ create(){
     # update dev config
     #
     echo "Adding .yml file"
-    local dev_template=$(<$template_root/$template/template.yml)
+    local dev_template=$(<$template_dir/template.yml)
 
     dev_template=${dev_template//PROJECT/$project}
     dev_template=${dev_template//TLD/$tld}
@@ -695,6 +740,7 @@ cert() {
 
 npm_install() {
 
+
     if confirm "Do you want to install NPM? It could take a while..." N; then
         # Install NPM Dependencies
         #
@@ -707,11 +753,11 @@ init() {
 
     if [[ -z "$1" ]]; then
         help
+        return 1
 
-        return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with other things. Try a new name!"
-        return
+        return 1
     fi
 
     local project="$1"
@@ -729,10 +775,10 @@ init() {
     if confirm "Do you want to clone a repo?" N; then
         clone $project
 
-        npm_install
+        if [ -f "$dir/package.json" ]; then
+            npm_install
+        fi
     fi
-
-    cd $OLDPWD
 
     if confirm "Do you want to add this project to your hosts?" Y; then
         hosts $project
@@ -744,8 +790,11 @@ init() {
 
     up
 
-    if confirm "Do you want to install WordPress?" Y; then
-        install "$project"
+    if has_hook "$project" install; then
+
+        if confirm "Do you want to run the initial setup?" Y; then
+            install "$project"
+        fi
     fi
 }
 
@@ -976,7 +1025,8 @@ delete() {
     fi
 }
 
-bashitup() {
+attach(){
+
     # requires project name
     if [[ -z "$1" ]]; then
         echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
@@ -987,8 +1037,56 @@ bashitup() {
     fi
 
     local project="$1"
+    local command="docker"
 
-    docker exec -it "$project" bash -c "${*:2}"
+    if hash winpty 2>/dev/null; then
+        # make it a pseudo-tty
+        local command="winpty docker"
+    fi
+
+    $command exec -it "$project" bash
+}
+
+bashitup(){
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        return
+    elif [ "$1" == "all" ]; then
+        echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
+        return
+    fi
+
+    local project="$1"
+    local command="docker"
+
+    if hash winpty 2>/dev/null; then
+        # make it a pseudo-tty
+        local command="winpty docker"
+    fi
+
+    $command exec -it "$project" bash -c "${*:2}"
+}
+
+bashrun() {
+    # requires project name
+    if [[ -z "$1" ]]; then
+        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        return
+    elif [ "$1" == "all" ]; then
+        echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
+        return
+    fi
+
+    local project="$1"
+    local command="docker"
+
+    if hash winpty 2>/dev/null; then
+        # use docker-compose because docker doesn't know this container exists
+        local command="winpty docker-compose"
+    fi
+
+    $command run "$project" "${*:2}"
 }
 
 # also the magic right here
@@ -1015,24 +1113,9 @@ test() {
         exit 1
     fi
 
-    # requires project name
-    if [[ -z "$2" ]]; then
-        echo "You need to provide the type of tests to create! e.g., nimble test project plugin plugin-name"
-        exit 1
-    fi
-
-    # requires project name
-    if [[ -z "$3" ]]; then
-        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
-        exit 1
-    fi
+    do_hook "$1" test "$@"
 
     local project=$1
-    local type=$2
-    local name=$3
-    local inner_dir="/var/www/html"
-
-    bashitup $project "export WP_CORE_DIR=$inner_dir/ && cd $inner_dir/wp-content/""$type""s/$name && export WP_TESTS_DIR=./tests/mock && phpunit ${*:4}"
 }
 
 install-tests() {
@@ -1113,7 +1196,7 @@ create-tests() {
     install-tests $1 $2 $3
 }
 
-if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run)$ ]]; then
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach)$ ]]; then
 
     if [[ $1 = "bash" ]]; then
         set -- "bashitup" "${@:2}"
