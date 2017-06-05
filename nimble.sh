@@ -637,7 +637,14 @@ up(){
     if [[ $valid = 1 ]]; then
 
         echo "Common templates assembled. Starting docker-compose in detached mode"
-        docker-compose up -d
+
+        if [ -z "$1" ] || ! [ "$1" = "attach" ]; then
+            local command="docker-compose up -d"
+        else
+            local command="docker-compose up"
+        fi
+
+        $command
     else
         echo "Did not find any valid projects! Did you run setup?: nimble setup"
     fi
@@ -1068,6 +1075,7 @@ bashitup(){
     $command exec -it "$project" bash -c "${*:2}"
 }
 
+# for containers that do not persist, aka use "run" instead of "exec"
 bashrun() {
     # requires project name
     if [[ -z "$1" ]]; then
@@ -1078,12 +1086,12 @@ bashrun() {
         return
     fi
 
+    # use docker-compose because if it's not persistent then docker doesn't know this container exists
     local project="$1"
-    local command="docker"
+    local command="docker-compose"
 
     if hash winpty 2>/dev/null; then
-        # use docker-compose because docker doesn't know this container exists
-        local command="winpty docker-compose"
+        local command="winpty $command"
     fi
 
     $command run "$project" "${*:2}"
