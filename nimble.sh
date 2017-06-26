@@ -851,7 +851,7 @@ env() {
     # with docker beta we are just using the default docker network
     local ip="10.0.75.1"
 
-    echo "export XDEBUG_CONFIG=\"remote_host=$ip remote_connect_back=1 remote_log=/var/www/html/logs/xdebug.log $profile profiler_output_dir=/tmp/cachegrind\""
+    echo "export XDEBUG_CONFIG=\"remote_host=$ip remote_connect_back=1 $profile\""
     echo "# to use this function to set up xdebug, use \`eval \$($command env \$machine_name)\`"
     echo "# \$machine_name is usually \`default\`, and is an optional parameter"
 }
