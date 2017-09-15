@@ -546,6 +546,13 @@ create(){
     up
 
     init $project
+
+    if has_hook "$project" install; then
+
+        if confirm "Do you want to run the initial setup?" Y; then
+            install "$project"
+        fi
+    fi
 }
 
 setup(){
@@ -788,18 +795,15 @@ init() {
         hosts $project
     fi
 
+    echo "Doing Init for $project"
+
+    do_hook "$project" "init"
+
     if confirm "Do you want to generate certificates for this site?" Y; then
         cert $project
     fi
 
     up
-
-    if has_hook "$project" install; then
-
-        if confirm "Do you want to run the initial setup?" Y; then
-            install "$project"
-        fi
-    fi
 }
 
 clone() {
@@ -892,7 +896,7 @@ hosts() {
 
         if [ $EUID != 0 ]; then
             sudo "$0" hosts "$@"
-            exit $?
+            return $?
         fi
     fi
 
