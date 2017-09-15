@@ -477,7 +477,7 @@ create(){
 
     local project="$1"
     local site_dir="$site_root/$project"
-    local www_dir="$site_root/$project"
+    local www_dir="$site_root/$project/www"
 
     # adding project name in case they differ
     do_hook "$project" "before-create" "$project_name"
