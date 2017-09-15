@@ -278,7 +278,7 @@ wp(){
     local project=$1
     local inner_dir="/var/www/html"
 
-    docker exec -i "$project" bash -c "cd $inner_dir && wp ${*:2}"
+    bashitup "$project" "cd $inner_dir && wp ${*:2}"
 }
 
 localize(){
@@ -490,7 +490,7 @@ create(){
         fi
 
         if [[ -z "$template" ]]; then
-            template="johnrom/nimble-wp"
+            template="johnrom/nimble-wp-template"
             echo "No template specified and no _conf/default-template.conf, using default WordPress template"
         fi
     fi
@@ -599,6 +599,8 @@ up(){
 
             echo "$this_template" >> "docker-compose.yml"
             valid=1
+
+            do_hook "$project_name" "before-up"
         fi
     done
 
@@ -635,7 +637,6 @@ up(){
     done
 
     if [[ $valid = 1 ]]; then
-
         echo "Common templates assembled. Starting docker-compose in detached mode"
 
         if [ -z "$1" ] || ! [ "$1" = "attach" ]; then
@@ -779,12 +780,8 @@ init() {
         fi
     fi
 
-    if confirm "Do you want to clone a repo?" N; then
-        clone $project
-
-        if [ -f "$dir/package.json" ]; then
-            npm_install
-        fi
+    if [ -f "$dir/package.json" ]; then
+        npm_install
     fi
 
     if confirm "Do you want to add this project to your hosts?" Y; then
@@ -820,8 +817,13 @@ clone() {
 
     cd $dir
 
-    # Pull a repo
-    ask repo "Repo URL (git@github.com:user/$project.git)" "" --required
+    if [[ -z "$2" ]]; then
+
+        # Pull a repo
+        ask repo "Repo URL (git@github.com:user/$project.git)" "" --required
+    else
+        local repo="$2"
+    fi
 
     # initialize
     git init
@@ -1134,34 +1136,7 @@ install-tests() {
         exit 1
     fi
 
-    # requires project name
-    if [[ -z "$2" ]]; then
-        echo "You need to provide the type of tests to create! e.g., nimble create-tests project plugin plugin-name"
-        exit 1
-    fi
-
-    # requires project name
-    if [[ -z "$3" ]]; then
-        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
-        exit 1
-    fi
-
-    local project=$1
-    local type=$2
-    local name=$3
-    local inner_dir="/var/www/html"
-
-    if [ ! -d "$site_root/$project" ]; then
-        echo "Project $project does not exist"
-        exit 1
-    fi
-
-    if [ ! -d "$site_root/$project/www/wp-content/""$type""s/$name/tests" ]; then
-        echo "$project's $type $name's tests haven't been created yet!"
-        exit 1
-    fi
-
-    bashitup $project "export WP_CORE_DIR=$inner_dir && cd $inner_dir/wp-content/""$type""s/$name && export WP_TESTS_DIR=./tests/mock && ./bin/install-wp-tests.sh wordpress-tests root example mysql"
+    do_hook "$1" "install-tests" "$1" "$2" "$3"
 }
 
 create-tests() {
@@ -1172,36 +1147,7 @@ create-tests() {
         exit 1
     fi
 
-    # requires project name
-    if [[ -z "$2" ]]; then
-        echo "You need to provide the type of tests to create! e.g., nimble create-tests project plugin plugin-name"
-        exit 1
-    fi
-
-    # requires project name
-    if [[ -z "$3" ]]; then
-        echo "You need to provide the $2 name! e.g., nimble create-tests project plugin plugin-name"
-        exit 1
-    fi
-
-    local project=$1
-    local type=$2
-    local name=$3
-    local inner_dir="/var/www/html"
-
-    if [ ! -d "$site_root/$project" ]; then
-        echo "Project $project does not exist"
-        exit 1
-    fi
-
-    if [ -d "$site_root/$project/www/wp-content/""$type""s/$name/tests" ]; then
-        echo "$project's $type $name already has tests!"
-        exit 1
-    fi
-
-    bashitup $project "export WP_CORE_DIR=$inner_dir && export WP_TESTS_DIR=./tests/mock && wp scaffold $type-tests $3"
-
-    install-tests $1 $2 $3
+    do_hook "$1" "create-tests" "$1" "$2" "$3"
 }
 
 if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach)$ ]]; then
