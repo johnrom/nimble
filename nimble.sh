@@ -441,8 +441,6 @@ create_front(){
 
     echo "$template" > "$site_dir/template.conf"
 
-    git add -f "$site_dir/template.conf"
-
     # update dev config
     #
     echo "Adding .yml file"
@@ -486,7 +484,7 @@ create(){
 
         if [[ -f "_conf/default-template.conf" ]]; then
             template="$(<_conf/default-template.conf)"
-            echo "No template specified, using default template at _conf/default-template.conf"
+            echo "No template specified, using default template: $template"
         fi
 
         if [[ -z "$template" ]]; then
