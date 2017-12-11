@@ -522,13 +522,6 @@ create(){
     # adding project name in case they differ
     do_hook "$project" "create" "$project_name"
 
-    if confirm "Do you want this project kept in git?" Y; then
-        git add -f "$site_dir/template.conf"
-    else
-        echo "$certs_root/$project.$tld.crt" >> .gitignore
-        echo "$certs_root/$project.$tld.key" >> .gitignore
-    fi
-
     # update dev config
     #
     echo "Adding .yml file"
@@ -537,7 +530,12 @@ create(){
     dev_template=${dev_template//PROJECT/$project}
     dev_template=${dev_template//TLD/$tld}
 
-    echo "$dev_template" > "$site_root/$project/$project.yml"
+    echo "$dev_template" > "$site_dir/$project.yml"
+
+    if confirm "Do you want this project kept in git?" Y; then
+        git add -f "$site_dir/template.conf"
+        git add -f "$site_dir/$project.yml"
+    fi
 
     # adding project name in case they differ
     do_hook "$project" "after-create" "$project_name"
@@ -993,9 +991,6 @@ delete_one() {
     # Remove from Git
     echo "Removing $project from Git"
     git rm --cached "$dir/.keep" >& /dev/null
-
-    echo "Deleting *$project.yml from gitignore"
-    grep -v "^.*$project\.yml.*$" .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
 
     rmhosts $project
 
