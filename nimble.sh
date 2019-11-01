@@ -441,8 +441,6 @@ create_front(){
 
     echo "$template" > "$site_dir/template.conf"
 
-    git add -f "$site_dir/template.conf"
-
     # update dev config
     #
     echo "Adding .yml file"
@@ -482,18 +480,13 @@ create(){
     # adding project name in case they differ
     do_hook "$project" "before-create" "$project_name"
 
-    if [ -z "$template" ]; then
+    default_template="$(<_conf/default-template.conf)"
 
-        if [[ -f "_conf/default-template.conf" ]]; then
-            template="$(<_conf/default-template.conf)"
-            echo "No template specified, using default template at _conf/default-template.conf"
-        fi
+    while [[ -z "$template" ]]; do
+        default_template=${default_template-"johnrom/nimble-wp-template"}
 
-        if [[ -z "$template" ]]; then
-            template="johnrom/nimble-wp-template"
-            echo "No template specified and no _conf/default-template.conf, using default WordPress template"
-        fi
-    fi
+        ask template "Please choose a template:" "$default_template" --required
+    done
 
     local template_dir="$template_root/$template"
 
@@ -535,6 +528,9 @@ create(){
     if confirm "Do you want this project kept in git?" Y; then
         git add -f "$site_dir/template.conf"
         git add -f "$site_dir/$project.yml"
+    else
+        echo "$certs_root/$project.$tld.crt" >> .gitignore
+        echo "$certs_root/$project.$tld.key" >> .gitignore
     fi
 
     # adding project name in case they differ
@@ -599,6 +595,7 @@ up(){
             local this_template=$(<$project/$project_name.yml)
             this_template=${this_template//SITEROOT/"$site_root_vm/$project_raw_name"}
             this_template=${this_template//NIMBLE/"$nimble_root_vm"}
+            this_template=${this_template//NIMCMD/"$nimble_root_command_line"}
             this_template=${this_template//IMAGES/"$images_root_command_line"}
             this_template=${this_template//COMMON/"$nimble_root_command_line/docker-common.yml"}
 
@@ -778,17 +775,6 @@ init() {
     local dir="$site_root/$project/www"
     local inner_dir="/var/www/html"
 
-    if [ -d "$dir/.git" ]; then
-
-        if confirm "There is already a Git Repository in this directory. Do you want to remove this Git Repository?" N; then
-            rm -rf "$dir/.git"
-        fi
-    fi
-
-    if [ -f "$dir/package.json" ]; then
-        npm_install
-    fi
-
     if confirm "Do you want to add this project to your hosts?" Y; then
         hosts $project
     fi
@@ -801,7 +787,8 @@ init() {
         cert $project
     fi
 
-    up
+    echo "Restarting containers"
+    restart
 }
 
 clone() {
@@ -855,7 +842,7 @@ env() {
     # with docker beta we are just using the default docker network
     local ip="10.0.75.1"
 
-    echo "export XDEBUG_CONFIG=\"remote_host=$ip remote_connect_back=1 $profile\""
+    echo "export XDEBUG_CONFIG=\"remote_host=$ip remote_autostart=1 $profile\""
     echo "# to use this function to set up xdebug, use \`eval \$($command env \$machine_name)\`"
     echo "# \$machine_name is usually \`default\`, and is an optional parameter"
 }
@@ -992,6 +979,9 @@ delete_one() {
     echo "Removing $project from Git"
     git rm --cached "$dir/.keep" >& /dev/null
 
+    echo "Deleting *$project.yml from gitignore"
+    grep -v "^.*$project\.yml.*$" .gitignore > .gitignore.tmp && mv .gitignore.tmp .gitignore
+
     rmhosts $project
 
     if confirm "Delete Project Files for $project? You could lose work! This is irreversible!" N; then
@@ -1037,7 +1027,7 @@ attach(){
 
     # requires project name
     if [[ -z "$1" ]]; then
-        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        echo "You need to provide the project to wp into! e.g., nimble wp myproject"
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
@@ -1058,7 +1048,7 @@ attach(){
 bashitup(){
     # requires project name
     if [[ -z "$1" ]]; then
-        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        echo "You need to provide the project to wp into! e.g., nimble wp myproject"
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
@@ -1080,7 +1070,7 @@ bashitup(){
 bashrun() {
     # requires project name
     if [[ -z "$1" ]]; then
-        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        echo "You need to provide the project to wp into! e.g., nimble wp myproject"
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
@@ -1102,7 +1092,7 @@ bashrun() {
 bashraw() {
     # requires project name
     if [[ -z "$1" ]]; then
-        echo "You need to provide the project to wp into! e.g., nimble wp linvilla"
+        echo "You need to provide the project to wp into! e.g., nimble wp myproject"
         return
     elif [ "$1" == "all" ]; then
         echo "'all' is not a valid name for a project! Unfortunately, it conflicts with \`delete all\`. Try a new name!"
