@@ -306,7 +306,7 @@ fetch_repo(){
 
     mkdir -p "$2"
 
-    git clone "git@github.com:$1.git" "$2"
+    git clone "https://github.com/$1.git" "$2"
 }
 
 get_template(){
@@ -809,7 +809,7 @@ clone() {
     if [[ -z "$2" ]]; then
 
         # Pull a repo
-        ask repo "Repo URL (git@github.com:user/$project.git)" "" --required
+        ask repo "Repo URL (https://github.com/user/$project.git)" "" --required
     else
         local repo="$2"
     fi
