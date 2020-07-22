@@ -1,0 +1,9 @@
+{
+  "typescript.tsdk": "./cli/node_modules/typescript/lib",
+  "editor.formatOnSave": true,
+  "eslint.enable": true,
+  "eslint.workingDirectories": ["./cli"],
+  "prettier.configPath": "./cli/.prettierrc",
+  "prettier.prettierPath": "./cli/node_modules/prettier",
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}
