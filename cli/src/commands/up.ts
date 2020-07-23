@@ -1,24 +1,14 @@
+import { exec } from './../helpers/shell-helpers';
 import { Command, flags } from '@oclif/command';
-import {
-  maybeTruncate,
-  tryStat,
-  maybeCreate,
-  tryRead,
-} from '../helpers/file-helpers';
+import { tryReadFile, writeFile } from '../helpers/file-helpers';
 import { throwIfNotValidProject } from '../helpers/project-helpers';
-import {
-  readFile,
-  createFile,
-  readFileSync,
-  readSync,
-  writeFileSync,
-} from 'fs-extra';
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
+import { ensureNetwork } from '../helpers/network-helpers';
 
 export default class Up extends Command {
   static description = 'Generate and run Docker-Compose';
 
-  static examples = [`$ nmbl up`];
+  static examples = ['$ nmbl up'];
 
   static flags = {
     attach: flags.boolean({
@@ -29,26 +19,37 @@ export default class Up extends Command {
 
   async run() {
     throwIfNotValidProject();
+    ensureNetwork();
 
     this.log('Processing docker-compose.yml');
-    maybeCreate('docker-compose.yml');
 
-    const templateFile = readFileSync('./nmbl.yml');
+    const templateFile = await tryReadFile('./nmbl.yml');
+
+    if (!templateFile) {
+      this.error(
+        'Project does not contain a valid docker configuration file (nmbl.yml)'
+      );
+    }
+
     const templateConfigs =
-      tryRead('./_nmbl/template/template-configs.yml')?.toString() ?? '';
+      (
+        await tryReadFile('./_nmbl/template/template-configs.yml')
+      )?.toString() ?? '';
 
     const dockerCompose = templateFile
       .toString()
       .replace(/TEMPLATE_CONFIGS/, templateConfigs);
 
-    writeFileSync('docker-compose.yml', dockerCompose);
+    writeFile('docker-compose.yml', dockerCompose);
 
     const { flags } = this.parse(Up);
 
     if (flags.attach) {
-      execSync('docker-compose up');
+      this.log('Attaching to docker-compose');
+
+      spawn('docker-compose', ['up'], { stdio: 'inherit' });
     } else {
-      execSync('docker-compose up -d');
+      exec('docker-compose up -d');
     }
   }
 }

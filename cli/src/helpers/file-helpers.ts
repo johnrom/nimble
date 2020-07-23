@@ -1,45 +1,59 @@
-import {
-  truncateSync,
-  PathLike,
-  Stats,
-  statSync,
-  openSync,
-  closeSync,
-  readFileSync,
-} from 'fs';
+import { promisify } from 'util';
+import * as fs from 'fs';
 
-export const maybeTruncate: typeof truncateSync = (path, len) => {
-  try {
-    truncateSync(path, len);
-  } catch {}
-};
+export const truncateFile = promisify(fs.truncate);
 
-export const tryStat = (path: PathLike): Stats | null => {
+export const tryTruncateFile = async (
+  path: fs.PathLike,
+  len?: number | null
+) => {
   try {
-    return statSync(path);
+    await truncateFile(path, len);
+
+    return true;
   } catch {}
 
-  return null;
+  return false;
 };
 
-export const tryRead = (path: PathLike) => {
+export const statFile = promisify(fs.stat);
+
+export const tryStatFile = (path: fs.PathLike): Promise<fs.Stats | null> => {
   try {
-    return readFileSync(path);
+    return statFile(path);
   } catch {}
 
-  return null;
+  return Promise.resolve(null);
 };
 
-export const create = (path: PathLike) => {
-  const handle = openSync(path, 'w');
+export const readFile = promisify(fs.readFile);
 
-  closeSync(handle);
-};
-
-export const maybeCreate = (path: PathLike) => {
+export const tryReadFile = (path: fs.PathLike): Promise<Buffer | null> => {
   try {
-    return create(path);
+    return readFile(path);
   } catch {}
 
-  return null;
+  return Promise.resolve(null);
+};
+
+export const openFile = promisify(fs.open);
+export const closeFile = promisify(fs.close);
+export const writeFile = promisify(fs.writeFile);
+
+export const createFile = async (path: fs.PathLike) => {
+  if (tryStatFile(path)) {
+    throw new Error(`File ${path} already exists.`);
+  }
+
+  writeFile(path, '');
+};
+
+export const tryCreateFile = async (path: fs.PathLike) => {
+  try {
+    await createFile(path);
+
+    return true;
+  } catch {}
+
+  return false;
 };
