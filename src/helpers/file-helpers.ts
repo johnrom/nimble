@@ -18,9 +18,9 @@ export const tryTruncateFile = async (
 
 export const statFile = promisify(fs.stat);
 
-export const tryStatFile = (path: fs.PathLike): Promise<fs.Stats | null> => {
+export const tryStatFile = async (path: fs.PathLike): Promise<fs.Stats | null> => {
   try {
-    return statFile(path);
+    return await statFile(path);
   } catch {}
 
   return Promise.resolve(null);
@@ -41,11 +41,11 @@ export const closeFile = promisify(fs.close);
 export const writeFile = promisify(fs.writeFile);
 
 export const createFile = async (path: fs.PathLike) => {
-  if (tryStatFile(path)) {
+  if (await tryStatFile(path)) {
     throw new Error(`File ${path} already exists.`);
   }
 
-  writeFile(path, '');
+  await writeFile(path, '');
 };
 
 export const tryCreateFile = async (path: fs.PathLike) => {

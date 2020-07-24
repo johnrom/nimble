@@ -1,8 +1,9 @@
+import { CreateHookArgs, BaseHookArgs } from '../types/hooks';
 import {
   isProjectNameValid,
   isProjectPathValid,
 } from './../helpers/project-helpers';
-import { doHook } from './../helpers/hook-helpers';
+import { doHook, getBaseHookArgs } from './../helpers/hook-helpers';
 import { isValidTemplate, fetchTemplate } from './../helpers/template-helpers';
 import { Command, flags } from '@oclif/command';
 import { mkdirp } from 'fs-extra';
@@ -12,7 +13,9 @@ import { resolve } from 'path';
 
 const debug = require('debug')('nmbl:create');
 
-export default class Create extends Command {
+export default class Create<
+  TBaseHookArgs extends BaseHookArgs
+> extends Command {
   static description = 'Create a new Nmbl Project.';
 
   static examples = [
@@ -24,14 +27,17 @@ export default class Create extends Command {
   static flags = {
     template: flags.string({
       description:
-        'Template in the form of a Git repo, like `johnrom/nimble-wp-template`',
+        'Template in the form of a Git repo, like `johnrom/nimble-wp-template`.',
+    }),
+    path: flags.string({
+      description: 'Path to the new project.',
     }),
     branch: flags.string({
-      description: 'Branch of the Git repository used for the template',
+      description: 'Branch of the Git repository used for the template.',
     }),
   };
 
-  static args = [{ name: 'name', required: true }, { name: 'path' }];
+  static args = [{ name: 'name', required: true }];
 
   async run() {
     const { args, flags } = this.parse(Create);
@@ -42,7 +48,7 @@ export default class Create extends Command {
       this.error('Please enter a valid project name.');
     }
 
-    const path = args.path ?? '.';
+    const path = flags.path ?? '.';
 
     if (!isProjectPathValid(path)) {
       this.error('Please enter a valid project path.');
@@ -73,15 +79,25 @@ export default class Create extends Command {
       prompted = true;
     }
 
+    this.log(`Fetching template: ${template}`);
     debug('Fetching template: %o', { template, path });
 
     await mkdirp(path);
     await exec(`git init ${path}`);
     await fetchTemplate(template, path);
 
-    await doHook(path, 'before-create', {});
-    await doHook(path, 'create', {});
-    // do_hook "$project" "before-create" "$project_name"
+    let baseHookArgs = getBaseHookArgs(name, path);
+
+    // this doesn't really use TBaseHookArgs...
+    baseHookArgs =
+      (await doHook<BaseHookArgs, TBaseHookArgs>(
+        path,
+        'get-args',
+        baseHookArgs
+      )) ?? baseHookArgs;
+
+    await doHook(path, 'before-create', baseHookArgs);
+    await doHook<CreateHookArgs>(path, 'create', baseHookArgs);
   }
 }
 
@@ -100,14 +116,6 @@ export default class Create extends Command {
     dev_template=${dev_template//TLD/$tld}
 
     echo "$dev_template" > "$site_dir/$project.yml"
-
-    if confirm "Do you want this project kept in git?" Y; then
-        git add -f "$site_dir/template.conf"
-        git add -f "$site_dir/$project.yml"
-    else
-        echo "$certs_root/$project.$tld.crt" >> .gitignore
-        echo "$certs_root/$project.$tld.key" >> .gitignore
-    fi
 
     # adding project name in case they differ
     do_hook "$project" "after-create" "$project_name"

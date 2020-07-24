@@ -1,3 +1,4 @@
+import { getAbsoluteTemplatePath } from './template-helpers';
 import { CLIError } from '@oclif/errors';
 import { mkdirp } from 'fs-extra';
 import { exec } from './shell-helpers';
@@ -43,7 +44,7 @@ export const linkSubmodule = async (
   throwIfGitNotExists();
 
   const projectRoot = path.resolve(rootDirectory);
-  const submodulePath = path.resolve(rootDirectory, relativePath);
+  const submodulePath = path.resolve(projectRoot, relativePath);
   const submoduleParent = path.basename(submodulePath);
 
   const repoUrl = repo.startsWith('.')
