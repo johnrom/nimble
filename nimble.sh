@@ -840,7 +840,7 @@ env() {
     # run me before docker-compose up -d in order to set your env variable
     # for PHP to hook up to local xdebug listeners using remote_host
     # with docker beta we are just using the default docker network
-    local ip="10.0.75.1"
+    local ip="host.docker.internal"
 
     echo "export XDEBUG_CONFIG=\"remote_host=$ip remote_autostart=1 $profile\""
     echo "# to use this function to set up xdebug, use \`eval \$($command env \$machine_name)\`"
