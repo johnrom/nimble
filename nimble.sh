@@ -820,8 +820,8 @@ clone() {
     # set remote
     git remote add -t \* -f origin "$repo"
 
-    # checkout master
-    git checkout -f master
+    # checkout main
+    git checkout -f main
 
     cd $nimble_root
 }
