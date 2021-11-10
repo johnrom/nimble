@@ -151,6 +151,15 @@ else
     fi
 fi
 
+debug() {
+    echo "nimble_root_command_line=${nimble_root_command_line}"
+    echo "images_root_command_line=${images_root_command_line}"
+    echo "site_root_command_line=${site_root_command_line}"
+    echo "nimble_root_vm=${nimble_root_vm}"
+    echo "images_root_vm=${images_root_vm}"
+    echo "site_root_vm=${site_root_vm}"
+}
+
 
 # nice yes/no function
 confirm() {
@@ -1139,7 +1148,7 @@ create-tests() {
     do_hook "$1" "create-tests" "$1" "$2" "$3"
 }
 
-if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach)$ ]]; then
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach|debug)$ ]]; then
 
     if [[ $1 = "bash" ]]; then
         set -- "bashitup" "${@:2}"
