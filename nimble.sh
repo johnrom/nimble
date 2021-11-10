@@ -127,27 +127,43 @@ help(){
 
 if is_cygwin; then
     nimble_root_command_line=${nimble_root_command_line//"/mnt/f/"/"f:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/mnt/F/"/"F:/"}
     nimble_root_command_line=${nimble_root_command_line//"/mnt/c/"/"c:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/mnt/C/"/"C:/"}
     nimble_root_command_line=${nimble_root_command_line//"/f/"/"f:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/F/"/"F:/"}
     nimble_root_command_line=${nimble_root_command_line//"/c/"/"c:/"}
+    nimble_root_command_line=${nimble_root_command_line//"/C/"/"C:/"}
     images_root_command_line=${images_root_command_line//"/mnt/f/"/"f:/"}
+    images_root_command_line=${images_root_command_line//"/mnt/F/"/"F:/"}
     images_root_command_line=${images_root_command_line//"/mnt/c/"/"c:/"}
+    images_root_command_line=${images_root_command_line//"/mnt/C/"/"C:/"}
     images_root_command_line=${images_root_command_line//"/f/"/"f:/"}
+    images_root_command_line=${images_root_command_line//"/F/"/"F:/"}
     images_root_command_line=${images_root_command_line//"/c/"/"c:/"}
+    images_root_command_line=${images_root_command_line//"/C/"/"C:/"}
     site_root_command_line=${site_root_command_line//"/mnt/f/"/"f:/"}
+    site_root_command_line=${site_root_command_line//"/mnt/F/"/"F:/"}
     site_root_command_line=${site_root_command_line//"/mnt/c/"/"c:/"}
+    site_root_command_line=${site_root_command_line//"/mnt/C/"/"C:/"}
     site_root_command_line=${site_root_command_line//"/f/"/"f:/"}
-    site_root_command_line=${site_root_command_line//"/c/"/"c:/"}
+    site_root_command_line=${site_root_command_line//"/F/"/"F:/"}
+    site_root_command_line=${site_root_command_line//"/C/"/"C:/"}
 else
-
     if ! is_mac; then
         # bash on ubuntu for windows .. hopefully not a dual boot
         nimble_root_vm=${nimble_root_vm//"/mnt/f/"/"/f/"}
+        nimble_root_vm=${nimble_root_vm//"/mnt/F/"/"/F/"}
         nimble_root_vm=${nimble_root_vm//"/mnt/c/"/"/c/"}
+        nimble_root_vm=${nimble_root_vm//"/mnt/C/"/"/C/"}
         images_root_vm=${images_root_vm//"/mnt/f/"/"/f/"}
+        images_root_vm=${images_root_vm//"/mnt/F/"/"/F/"}
         images_root_vm=${images_root_vm//"/mnt/c/"/"/c/"}
+        images_root_vm=${images_root_vm//"/mnt/C/"/"/C/"}
         site_root_vm=${site_root_vm//"/mnt/f/"/"/f/"}
+        site_root_vm=${site_root_vm//"/mnt/F/"/"/F/"}
         site_root_vm=${site_root_vm//"/mnt/c/"/"/c/"}
+        site_root_vm=${site_root_vm//"/mnt/C/"/"/C/"}
     fi
 fi
 
