@@ -757,6 +757,46 @@ migrate() {
     done
 }
 
+maybe_winpty() {
+    
+    if hash winpty 2>/dev/null; then
+        # make it a pseudo-tty
+        winpty $@
+    fi
+}
+
+# Add valid certs. From the excellent reference material here:
+# https://deliciousbrains.com/ssl-certificate-authority-for-local-https-development/
+root_ca_key_name="nimbleLocalCA"
+organization_name="NimbleLocalDev"
+one_year_in_days=365
+
+init_root_cert() {
+    maybe_winpty openssl genrsa -des3 -out "$PWD/_conf/certs/$root_ca_key_name.key" 2048
+    maybe_winpty openssl req -x509 -new -nodes -sha256 -days $one_year_in_days \
+        -key "$PWD/_conf/certs/$root_ca_key_name.key" \
+        -out "$PWD/_conf/certs/$root_ca_key_name.pem"
+}
+
+windows_init_root_cert() {
+    init_root_cert
+
+    certutil -addstore -f "Root" "$PWD/_conf/certs/$root_ca_key_name.pem"
+}
+
+mac_init_root_cert() {
+    init_root_cert
+
+    sudo security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" "$PWD/_conf/certs/$root_ca_key_name.pem"
+}
+
+linux_init_root_cert() {
+    init_root_cert
+
+    sudo openssl x509 -outform der -in "$PWD/_conf/certs/$root_ca_key_name.pem" -out "/usr/local/share/ca-certificates/$root_ca_key_name.crt"
+    sudo update-ca-certificates
+}
+
 cert() {
 
     if [[ -z "$1" ]]; then
@@ -764,19 +804,56 @@ cert() {
         return
     fi
 
+    if [ ! -f "$PWD/_conf/certs/$root_ca_key_name.pem" ]; then
+        echo "Root certificate is not installed. Please run `windows_init_root_cert`, `mac_init_root_cert`, or `linux_init_root_cert`."
+        return
+    fi
+
     local project=$1
 
     openssl req \
         -newkey rsa:2048 -nodes \
-        -subj "//C=US\ST=Pennsylvania\L=Philadelphia\O=MYORGANIZATION\CN=$project.$tld" \
-        -keyout $PWD/_conf/certs/"$project.$tld.key" \
-        -x509 -days 365 -out $PWD/_conf/certs/"$project.$tld.crt"
+        -subj "//C=US\ST=Pennsylvania\L=Philadelphia\O=$organization_name\CN=$project.$tld" \
+        -keyout "$PWD/_conf/certs/$project.$tld.key" \
+        -out "$PWD/_conf/certs/$project.$tld.csr"
+
+    tee "$PWD/_conf/certs/$project.$tld.ext" <<SANEXT > /dev/null
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $project.$tld
+SANEXT
+
+    maybe_winpty openssl x509 -req -sha256 -CAcreateserial -days $one_year_in_days \
+        -CA "$PWD/_conf/certs/$root_ca_key_name.pem" \
+        -CAkey "$PWD/_conf/certs/$root_ca_key_name.key" \
+        -in "$PWD/_conf/certs/$project.$tld.csr" \
+        -extfile "$PWD/_conf/certs/$project.$tld.ext" \
+        -out "$PWD/_conf/certs/$project.$tld.crt"
+}
+
+refreshenv() {
+    touch ~/.bashrc
+    source ~/.bashrc
 }
 
 npm_install() {
 
-
     if confirm "Do you want to install NPM? It could take a while..." N; then
+        local node_version="$(node -p "require('./package.json').engines.node")"
+
+        if [[ -z "$node_version" ]]; then
+            echo "No engines field in package.json. Using currently available node version."
+        else
+            nvm install "$node_version"
+            nvm use "$node_version"
+        fi
+
+        refreshenv
+        
         # Install NPM Dependencies
         #
         echo "Installing NPM Dependencies"
@@ -816,6 +893,8 @@ init() {
     restart
 }
 
+# it's not really a clone, but git init, checkout -f. 
+# it works with existing directory, but will override files.
 clone() {
 
     if [[ -z "$1" ]]; then
@@ -898,17 +977,10 @@ hosts() {
         fi
     fi
 
-    local ip="10.0.75.2"
-
-    # mac forwards loopback instead of using nat
-    if [ "$(uname)" == "Darwin" ]; then
-        local ip="127.0.0.1"
-
-        if [ $EUID != 0 ]; then
-            sudo "$0" hosts "$@"
-            return $?
-        fi
-    fi
+    # this should be the value of gateway.docker.host, 
+    # but I can't figure out how to get that from docker.
+    # localhost just seems to work, though
+    local ip="127.0.0.1"
 
     rmhosts $project
 
@@ -1164,7 +1236,7 @@ create-tests() {
     do_hook "$1" "create-tests" "$1" "$2" "$3"
 }
 
-if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach|debug)$ ]]; then
+if [[ $1 =~ ^(help|up|down|create|migrate|init|delete|do_hook|env|hosts|rmhosts|clear|localize|clean|install|cert|restart|update|wp|bash|bashraw|create-tests|install-tests|test|setup|run|attach|debug|windows_init_root_cert|linux_init_root_cert|mac_init_root_cert)$ ]]; then
 
     if [[ $1 = "bash" ]]; then
         set -- "bashitup" "${@:2}"
